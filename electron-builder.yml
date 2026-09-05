@@ -1,0 +1,20 @@
+appId: me.akshitbansal.lyricveil
+productName: Lyric Veil
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+win:
+  target:
+    - portable
+    - nsis
+  icon: resources/tray.ico
+portable:
+  artifactName: LyricVeil-${version}-portable.exe
+nsis:
+  artifactName: LyricVeil-${version}-setup.exe
+  oneClick: false
+  allowToChangeInstallationDirectory: true
