@@ -41,6 +41,9 @@ export function App() {
   // and feed the CSS custom properties styles.css is written against.
   const rootStyle: CSSProperties = {
     fontSize: `${config.fontSizePx}px`,
+    fontWeight: config.fontWeight,
+    lineHeight: config.lineHeight,
+    letterSpacing: `${config.letterSpacingEm}em`,
     textAlign: config.textAlign,
     ['--font-family' as string]: config.fontFamily,
     ['--text-rgb' as string]: hexToRgbTriplet(config.textColor),
@@ -59,7 +62,8 @@ export function App() {
   return (
     <div
       className={cn(
-        'lyrics-root relative h-full w-full font-bold leading-[1.28] tracking-[-0.015em]',
+        'relative h-full w-full',
+        config.textShadow && 'lyrics-root',
         // The whole surface is a drag target in interactive mode, so the window
         // can be repositioned without hunting for a title bar it does not have.
         interactive && 'drag-handle',

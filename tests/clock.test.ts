@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEADBAND_MS,
   HARD_RESYNC_THRESHOLD_MS,
   LEAD_IN_MS,
   advance,
@@ -22,6 +23,14 @@ function anchor(overrides: Partial<PlaybackAnchor> = {}): PlaybackAnchor {
   };
 }
 
+/** A clock already playing at `positionMs`, with no history. */
+function playingAt(positionMs: number) {
+  const state = createClockState(0);
+  state.isPlaying = true;
+  state.positionMs = positionMs;
+  return state;
+}
+
 describe('clock', () => {
   it('advances with elapsed time while playing', () => {
     const state = createClockState(0);
@@ -39,36 +48,77 @@ describe('clock', () => {
     expect(state.positionMs).toBe(5000);
   });
 
-  it('compensates for the age of the sample', () => {
+  it('compensates for the age of a playing sample', () => {
     const state = createClockState(0);
     // Sample taken 120ms ago reporting 10s: the true position is 10.12s.
     applyAnchor(state, anchor({ progressMs: 10_000, sampledAt: NOW - 120 }), NOW);
     expect(state.positionMs + state.pendingErrorMs).toBeCloseTo(10_120, 0);
   });
 
-  it('hard-resyncs on a forward seek', () => {
+  it('does not age a paused sample', () => {
     const state = createClockState(0);
-    state.positionMs = 10_000;
+    state.positionMs = 5000;
+    state.isPlaying = false;
+    // Two seconds old, but nothing was playing during those two seconds.
+    applyAnchor(state, anchor({ isPlaying: false, progressMs: 5000, sampledAt: NOW - 2000 }), NOW);
+    expect(state.positionMs).toBe(5000);
+    expect(state.pendingErrorMs).toBe(0);
+  });
+
+  it('hard-resyncs on a forward seek', () => {
+    const state = playingAt(10_000);
     applyAnchor(state, anchor({ progressMs: 60_000 }), NOW);
     expect(state.positionMs).toBe(60_000);
     expect(state.pendingErrorMs).toBe(0);
   });
 
   it('hard-resyncs on a backward seek', () => {
-    const state = createClockState(0);
-    state.positionMs = 60_000;
+    const state = playingAt(60_000);
     applyAnchor(state, anchor({ progressMs: 1000 }), NOW);
     expect(state.positionMs).toBe(1000);
     expect(state.pendingErrorMs).toBe(0);
   });
 
-  it('eases small drift instead of snapping', () => {
+  it('snaps on resume from pause rather than easing', () => {
     const state = createClockState(0);
-    state.positionMs = 10_000;
+    state.positionMs = 5000;
+    state.isPlaying = false;
+    applyAnchor(state, anchor({ isPlaying: true, progressMs: 5150 }), NOW);
+    expect(state.positionMs).toBe(5150);
+    expect(state.pendingErrorMs).toBe(0);
+  });
+
+  it('ignores jitter inside the deadband', () => {
+    const state = playingAt(10_000);
+    applyAnchor(state, anchor({ progressMs: 10_000 + DEADBAND_MS - 10 }), NOW);
+    expect(state.positionMs).toBe(10_000);
+    expect(state.pendingErrorMs).toBe(0);
+  });
+
+  it('does not let one outlier move the clock', () => {
+    const state = playingAt(10_000);
+    for (const jitter of [0, 10, 300, -10]) {
+      applyAnchor(state, anchor({ progressMs: 10_000 + jitter }), NOW);
+      expect(state.pendingErrorMs).toBe(0);
+    }
+    expect(state.positionMs).toBe(10_000);
+  });
+
+  it('corrects drift that every sample agrees on', () => {
+    const state = playingAt(10_000);
     applyAnchor(state, anchor({ progressMs: 10_200 }), NOW);
     // Nothing moves until a frame is drawn -- that is what makes it invisible.
     expect(state.positionMs).toBe(10_000);
     expect(state.pendingErrorMs).toBeCloseTo(200, 0);
+  });
+
+  it('does not apply the same correction twice', () => {
+    const state = playingAt(10_000);
+    applyAnchor(state, anchor({ progressMs: 10_200 }), NOW);
+    for (let frame = 0; frame < 120; frame += 1) advance(state, 0);
+    // Clock has absorbed the 200ms. A second identical reading is now on target.
+    applyAnchor(state, anchor({ progressMs: 10_200 }), NOW);
+    expect(Math.abs(state.pendingErrorMs)).toBeLessThan(DEADBAND_MS);
   });
 
   it('converges 200ms of drift within twenty frames', () => {
@@ -84,10 +134,10 @@ describe('clock', () => {
   });
 
   it('treats a difference just over the threshold as a seek', () => {
-    const state = createClockState(0);
-    state.positionMs = 0;
+    const state = playingAt(0);
     applyAnchor(state, anchor({ progressMs: HARD_RESYNC_THRESHOLD_MS + 1 }), NOW);
     expect(state.pendingErrorMs).toBe(0);
+    expect(state.positionMs).toBe(HARD_RESYNC_THRESHOLD_MS + 1);
   });
 
   it('applies the user offset and lead-in when read', () => {

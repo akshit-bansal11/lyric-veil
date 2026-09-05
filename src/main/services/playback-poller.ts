@@ -78,12 +78,16 @@ export function startPoller(handlers: PollerHandlers): Poller {
     }
 
     try {
+      const startedAt = Date.now();
       const state = await fetchState();
+      const receivedAt = Date.now();
       consecutiveErrors = 0;
 
-      // Captured on receipt, not on send: round-trip latency baked into an
-      // anchor becomes permanent drift the clock can never correct away.
-      const sampledAt = Date.now();
+      // Spotify read its player state somewhere in the middle of the round trip.
+      // Stamping the sample with the receipt time bakes the second half of that
+      // trip -- typically 50 to 150ms -- into every anchor as permanent lag. The
+      // midpoint is the honest estimate of when the number was true.
+      const sampledAt = Math.round((startedAt + receivedAt) / 2);
 
       if (!state) {
         emitTrackChange(null);

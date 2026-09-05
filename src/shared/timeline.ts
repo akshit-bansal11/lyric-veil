@@ -2,14 +2,22 @@ import type { LyricLine, LyricWord, PlaybackAnchor } from './types';
 
 /** Beyond this the difference is a seek or a track change, not drift. */
 export const HARD_RESYNC_THRESHOLD_MS = 700;
-/** Fraction of the outstanding error absorbed per frame. */
+/** Fraction of the outstanding correction absorbed per frame. */
 export const EASE_RATE = 0.08;
 /**
- * Start each word's wipe slightly early. Reading a word a hair before it is sung
- * feels right; a hair after feels broken. Applied at read time rather than baked
- * into the timings, so it also improves genuinely word-timed sources.
+ * Start each word slightly early. Reading a word a hair before it is sung feels
+ * right; a hair after feels broken. Applied at read time rather than baked into
+ * the timings, so it also improves genuinely word-timed sources.
  */
 export const LEAD_IN_MS = 60;
+/**
+ * Spotify's progress_ms jitters by this much from one poll to the next as a
+ * matter of course. A correction smaller than this is chasing noise, and a
+ * clock that chases noise visibly speeds up and slows down once a second.
+ */
+export const DEADBAND_MS = 90;
+/** Anchors remembered for the median. Odd, so the median is a real sample. */
+export const SAMPLE_WINDOW = 5;
 /** Below this the residual correction is imperceptible; stop chasing it. */
 const SETTLED_MS = 1;
 
@@ -21,18 +29,20 @@ export interface ClockState {
   offsetMs: number;
   /** Outstanding correction, bled off a little each frame. */
   pendingErrorMs: number;
+  /** Errors of the most recent anchors, oldest first. */
+  errorSamples: number[];
 }
 
 export function createClockState(offsetMs: number): ClockState {
-  return { positionMs: 0, isPlaying: false, offsetMs, pendingErrorMs: 0 };
+  return { positionMs: 0, isPlaying: false, offsetMs, pendingErrorMs: 0, errorSamples: [] };
 }
 
 /**
  * Advance one animation frame.
  *
- * Corrections are eased rather than snapped: snapping every second produces a
- * visible micro-jump in the word wipe, while easing ~8% of the error per frame
- * converges within a few hundred milliseconds and is invisible.
+ * The position free-runs on the frame clock while playing; that clock is far
+ * steadier than anything Spotify reports. Corrections are eased rather than
+ * snapped, because a snap every second is a visible micro-jump.
  */
 export function advance(state: ClockState, dtMs: number): void {
   if (state.isPlaying) state.positionMs += dtMs;
@@ -45,25 +55,55 @@ export function advance(state: ClockState, dtMs: number): void {
   }
 }
 
+function median(values: ReadonlyArray<number>): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  const upper = sorted[mid] ?? 0;
+  if (sorted.length % 2 === 1) return upper;
+  return ((sorted[mid - 1] ?? 0) + upper) / 2;
+}
+
 /**
  * Fold in a fresh sample from Spotify.
+ *
+ * No single sample is trusted. The error against each of the last few anchors
+ * is kept, and only the median of them -- and only when it clears the deadband
+ * -- becomes a correction. One jittery poll therefore moves nothing; a real,
+ * consistent drift is still caught within a few polls.
  *
  * `now` is passed rather than read so the behaviour is testable; it must be the
  * same clock `anchor.sampledAt` came from.
  */
 export function applyAnchor(state: ClockState, anchor: PlaybackAnchor, now: number): void {
+  const wasPlaying = state.isPlaying;
   state.isPlaying = anchor.isPlaying;
 
-  // The sample was taken in the main process some milliseconds ago. Without this
-  // term that latency becomes permanent drift the clock can never correct away.
-  const truth = anchor.progressMs + (now - anchor.sampledAt);
+  // A paused position does not age. Adding elapsed time to a paused sample
+  // pushed the clock forward on every poll while nothing was playing.
+  const age = anchor.isPlaying ? now - anchor.sampledAt : 0;
+  const truth = anchor.progressMs + age;
   const error = truth - state.positionMs;
 
-  if (Math.abs(error) > HARD_RESYNC_THRESHOLD_MS) {
+  // A seek, a track change, or a play/pause edge: the old samples describe a
+  // timeline that no longer exists, so snap and start the window over.
+  if (Math.abs(error) > HARD_RESYNC_THRESHOLD_MS || wasPlaying !== anchor.isPlaying) {
     state.positionMs = truth;
     state.pendingErrorMs = 0;
-  } else {
-    state.pendingErrorMs = error;
+    state.errorSamples.length = 0;
+    return;
+  }
+
+  state.errorSamples.push(error);
+  if (state.errorSamples.length > SAMPLE_WINDOW) state.errorSamples.shift();
+
+  const drift = median(state.errorSamples);
+  if (Math.abs(drift) <= DEADBAND_MS) return;
+
+  state.pendingErrorMs = drift;
+  // The correction is about to be absorbed into the position; shift the samples
+  // by the same amount so they do not vote for it a second time.
+  for (let i = 0; i < state.errorSamples.length; i += 1) {
+    state.errorSamples[i] = (state.errorSamples[i] ?? 0) - drift;
   }
 }
 

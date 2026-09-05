@@ -1,7 +1,7 @@
 export type TextAlign = 'left' | 'center' | 'right';
 
 export interface AppConfig {
-  /** User-tunable sync nudge, ms. Positive = lyrics appear earlier. Hotkeys only. */
+  /** User-tunable sync nudge, ms. Positive = lyrics appear earlier. */
   offsetMs: number;
 
   textColor: string;
@@ -9,6 +9,14 @@ export interface AppConfig {
   textOpacity: number;
   fontSizePx: number;
   fontFamily: string;
+  /** CSS font-weight, 300-900. */
+  fontWeight: number;
+  /** Unitless CSS line-height. */
+  lineHeight: number;
+  /** CSS letter-spacing, in em. */
+  letterSpacingEm: number;
+  /** The readability shadow behind the text. Off is cleaner over a dark background. */
+  textShadow: boolean;
   textAlign: TextAlign;
 
   /** Window position as a fraction of the free space on the primary display, 0-100. */
@@ -39,6 +47,10 @@ export const DEFAULT_CONFIG: AppConfig = {
   textOpacity: 0.42,
   fontSizePx: 34,
   fontFamily: 'Segoe UI Variable Display',
+  fontWeight: 700,
+  lineHeight: 1.28,
+  letterSpacingEm: -0.015,
+  textShadow: true,
   textAlign: 'left',
 
   posX: 4,
@@ -64,7 +76,7 @@ export function clampPercent(value: number): number {
   return Math.min(Math.max(Math.round(value), 0), 100);
 }
 
-/** `#rrggbb` to `r, g, b`, so a CSS `rgb(r g b / a)` can carry the opacity. */
+/** `#rrggbb` to `r g b`, so a CSS `rgb(r g b / a)` can carry the opacity. */
 export function hexToRgbTriplet(hex: string): string {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!match || !match[1]) return '255 255 255';
