@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    /* The window is transparent; anything painted here would become a visible panel. */
+    background: transparent;
+    overflow: hidden;
+    /* Belt and braces: the window is click-through, but interactive mode is not. */
+    user-select: none;
+    cursor: default;
+  }
+
+  body {
+    /* A heavy grotesque that is already on every Windows machine, so the overlay
+       has no web font to fetch and works offline by construction. */
+    font-family: var(--font-family, "Segoe UI Variable Display"), "Segoe UI", system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .lyrics-root {
+    /* Non-negotiable on a transparent window: without a shadow the text is
+       unreadable the moment the wallpaper behind it is light. */
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.55), 0 4px 18px rgb(0 0 0 / 0.45);
+  }
+
+  .lyrics-backdrop {
+    background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.28), transparent 70%);
+  }
+
+  .lyric-line {
+    transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms
+      cubic-bezier(0.22, 1, 0.36, 1), filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: left center;
+  }
+
+  .lyrics-stage {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  /*
+   * The wipe. A 200%-wide gradient with a hard stop at the midpoint means
+   * sliding background-position from 100% to 0% walks that edge cleanly across
+   * the glyphs. Clipping to the text keeps it a paint-only change: no layout,
+   * no repaint of anything but this element.
+   */
+  .lyric-word {
+    background-image: linear-gradient(
+      90deg,
+      rgb(255 255 255) 50%,
+      rgb(255 255 255 / var(--rest-opacity, 0.32)) 50%
+    );
+    background-size: 200% 100%;
+    background-position: calc(100% - var(--p, 0) * 100%) 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    will-change: background-position;
+  }
+
+  /* Plain (unsynced) lyrics have invented timing, so they get no wipe at all --
+     a wipe that is confidently wrong reads worse than honest static text. */
+  .lyric-word-static {
+    color: rgb(255 255 255);
+    background: none;
+  }
+
+  .drag-handle {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyric-line,
+  .lyrics-stage {
+    transition-duration: 1ms;
+  }
+}
