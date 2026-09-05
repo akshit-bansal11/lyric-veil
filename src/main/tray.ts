@@ -16,10 +16,11 @@ export interface TrayActions {
 }
 
 function iconPath(): string {
-  // Packaged, resources/ sits beside the asar; in dev it is next to the sources.
-  return app.isPackaged
-    ? join(process.resourcesPath, 'resources', 'tray.png')
-    : join(app.getAppPath(), 'resources', 'tray.png');
+  // resources/ is packed inside app.asar, not beside it, and Electron reads
+  // asar paths transparently -- so the app path works packaged and in dev alike.
+  // Looking beside the asar (process.resourcesPath) found nothing in the
+  // installed build and left the tray with an empty icon.
+  return join(app.getAppPath(), 'resources', 'tray.png');
 }
 
 export function createTray(actions: TrayActions): Tray {
