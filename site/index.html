@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lyric Veil — desktop lyrics overlay for Spotify</title>
+    <meta
+      name="description"
+      content="A frameless, fully transparent, click-through Windows overlay showing word-synced lyrics for whatever is playing on Spotify."
+    />
+    <meta name="theme-color" content="#0a0a0b" />
+    <meta property="og:title" content="Lyric Veil" />
+    <meta
+      property="og:description"
+      content="Word-synced Spotify lyrics, painted straight onto your desktop. Transparent, click-through, out of the way."
+    />
+    <meta property="og:type" content="website" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='9' width='16' height='3' rx='1.5' fill='white' opacity='.35'/%3E%3Crect x='5' y='14.5' width='22' height='3.5' rx='1.75' fill='white'/%3E%3Crect x='5' y='20.5' width='13' height='3' rx='1.5' fill='white' opacity='.35'/%3E%3C/svg%3E"
+    />
+
+    <style>
+      :root {
+        --bg: #0a0a0b;
+        --ink: #f4f4f5;
+        --muted: #8b8b93;
+        --line: #212125;
+        --accent: #1ed760;
+        --shell: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+      }
+
+      * { box-sizing: border-box; }
+
+      html { -webkit-text-size-adjust: 100%; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--shell);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        width: min(100% - 2.5rem, 62rem);
+        margin-inline: auto;
+      }
+
+      /* ---------- masthead ---------- */
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.6rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .mark {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .mark svg { display: block; }
+
+      .repo {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+        border-bottom: 1px solid transparent;
+        transition: color 0.18s, border-color 0.18s;
+      }
+      .repo:hover { color: var(--ink); border-color: var(--line); }
+
+      /* ---------- hero ---------- */
+
+      .hero { padding: clamp(3rem, 9vw, 6rem) 0 clamp(2rem, 5vw, 3.5rem); }
+
+      h1 {
+        margin: 0 0 1rem;
+        font-size: clamp(2.1rem, 6.2vw, 3.9rem);
+        line-height: 1.06;
+        letter-spacing: -0.035em;
+        font-weight: 700;
+        max-width: 18ch;
+      }
+
+      .lede {
+        margin: 0;
+        max-width: 54ch;
+        color: var(--muted);
+        font-size: clamp(1rem, 1.9vw, 1.15rem);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 2.2rem;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1.15rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        transition: background-color 0.18s, border-color 0.18s, transform 0.18s;
+      }
+      .btn:hover { border-color: #3a3a41; transform: translateY(-1px); }
+      .btn-primary {
+        background: var(--ink);
+        color: #0a0a0b;
+        border-color: var(--ink);
+      }
+      .btn-primary:hover { background: #fff; border-color: #fff; }
+
+      .note {
+        margin-top: 0.9rem;
+        font-size: 0.8rem;
+        color: #63636b;
+      }
+
+      /* ---------- the demo ---------- */
+
+      .stage-frame {
+        position: relative;
+        margin: clamp(2.5rem, 6vw, 4rem) 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        /* Stands in for a desktop wallpaper, so the transparency reads as real. */
+        background:
+          radial-gradient(90rem 40rem at 15% -10%, #2a2233 0%, transparent 60%),
+          radial-gradient(70rem 34rem at 95% 110%, #11303a 0%, transparent 62%),
+          #0d0d10;
+      }
+
+      .stage-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.7rem 0.9rem;
+        border-bottom: 1px solid rgb(255 255 255 / 0.06);
+      }
+      .dot { width: 10px; height: 10px; border-radius: 50%; background: #2e2e35; }
+      .stage-label {
+        margin-left: 0.4rem;
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        color: #5a5a63;
+        letter-spacing: 0.02em;
+      }
+
+      .stage {
+        padding: clamp(1.6rem, 4vw, 2.8rem) clamp(1.3rem, 4vw, 2.6rem);
+        min-height: 15rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.15em;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-size: clamp(1.15rem, 3.4vw, 1.9rem);
+        line-height: 1.34;
+        text-shadow: 0 1px 2px rgb(0 0 0 / 0.55), 0 4px 18px rgb(0 0 0 / 0.45);
+      }
+
+      .line { margin: 0; transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms cubic-bezier(0.22, 1, 0.36, 1), filter 280ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: left center; }
+      .line[data-state='near'] { opacity: 0.3; transform: scale(0.96); }
+      .line[data-state='far'] { opacity: 0.16; transform: scale(0.94); filter: blur(1px); }
+      .line[data-state='active'] { opacity: 1; transform: scale(1); }
+
+      /* The same technique the app uses: a 200%-wide gradient with a hard stop
+         at the midpoint, slid across text-clipped glyphs. */
+      .word {
+        display: inline-block;
+        white-space: pre;
+        background-image: linear-gradient(90deg, #fff 50%, rgb(255 255 255 / 0.32) 50%);
+        background-size: 200% 100%;
+        background-position: calc(100% - var(--p, 0) * 100%) 0;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      /* ---------- content ---------- */
+
+      section { padding: clamp(2.5rem, 6vw, 4rem) 0; border-top: 1px solid var(--line); }
+
+      h2 {
+        margin: 0 0 1.6rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1.6rem 2.2rem;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      }
+
+      .grid h3 {
+        margin: 0 0 0.4rem;
+        font-size: 1rem;
+        letter-spacing: -0.015em;
+      }
+      .grid p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+      dl.keys {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.55rem 1.4rem;
+        margin: 0;
+        align-items: baseline;
+      }
+      dl.keys dt { margin: 0; }
+      dl.keys dd { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+      kbd {
+        font-family: var(--mono);
+        font-size: 0.76rem;
+        padding: 0.2rem 0.45rem;
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        background: #141418;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+
+      pre {
+        margin: 0;
+        padding: 1.1rem 1.2rem;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #101014;
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        line-height: 1.7;
+        color: #c9c9d1;
+      }
+      pre .c { color: #5f5f69; }
+
+      footer {
+        padding: 2.5rem 0 3.5rem;
+        border-top: 1px solid var(--line);
+        color: #5a5a63;
+        font-size: 0.82rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        justify-content: space-between;
+      }
+      footer a { color: var(--muted); text-decoration: none; }
+      footer a:hover { color: var(--ink); }
+
+      @media (prefers-reduced-motion: reduce) {
+        .line, .btn { transition-duration: 1ms; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="mark">
+          <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+            <rect x="5" y="9" width="16" height="3" rx="1.5" fill="#fff" opacity=".35" />
+            <rect x="5" y="14.5" width="22" height="3.5" rx="1.75" fill="#fff" />
+            <rect x="5" y="20.5" width="13" height="3" rx="1.5" fill="#fff" opacity=".35" />
+          </svg>
+          Lyric Veil
+        </div>
+        <a class="repo" href="https://github.com/akshit-bansal11/lyric-veil">GitHub →</a>
+      </header>
+
+      <div class="hero">
+        <h1>Lyrics on your desktop, not in a window.</h1>
+        <p class="lede">
+          A frameless, fully transparent, click-through overlay that paints word-synced lyrics
+          straight onto your wallpaper — following whatever is playing on Spotify. No panel, no
+          album art, no border. Clicks pass right through it.
+        </p>
+
+        <div class="actions">
+          <a
+            class="btn btn-primary"
+            href="https://github.com/akshit-bansal11/lyric-veil/releases/latest"
+          >
+            Download for Windows
+          </a>
+          <a class="btn" href="https://github.com/akshit-bansal11/lyric-veil">Read the source</a>
+        </div>
+        <p class="note">
+          Windows 10 (1809+) and 11 · portable .exe, no install required · MIT licensed
+        </p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="stage-frame">
+        <div class="stage-bar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="stage-label">live — the real wipe, running in this page</span>
+        </div>
+        <div class="stage" id="stage" aria-label="Animated preview of the lyric overlay"></div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <section>
+        <h2>What it does</h2>
+        <div class="grid">
+          <div>
+            <h3>Word-by-word fill</h3>
+            <p>
+              The active line fills a word at a time as it is sung. Where a source only provides
+              line-level timing, word timings are synthesized by distributing the line across its
+              words by character weight — close to indistinguishable, and it covers every track.
+            </p>
+          </div>
+          <div>
+            <h3>Never in the way</h3>
+            <p>
+              Click-through by default, kept out of Alt-Tab and the taskbar, and it never takes
+              focus from what you are actually doing. One hotkey makes it a real window again when
+              you want to move it.
+            </p>
+          </div>
+          <div>
+            <h3>Smooth, not steppy</h3>
+            <p>
+              Spotify is polled once a second, but the overlay runs its own clock at frame rate and
+              eases the correction instead of snapping. Seeking resyncs within about a second;
+              pausing freezes the wipe mid-word.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Controls</h2>
+        <dl class="keys">
+          <dt><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>L</kbd></dt>
+          <dd>Interactive mode — drag, resize, open settings</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>H</kbd></dt>
+          <dd>Show or hide the overlay</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>[</kbd></dt>
+          <dd>Nudge the sync offset 100 ms earlier</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>]</kbd></dt>
+          <dd>Nudge the sync offset 100 ms later</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>0</kbd></dt>
+          <dd>Reset the offset</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Run it from source</h2>
+        <pre><span class="c"># Needs Node 24 and a Spotify client ID (free, no secret required)</span>
+git clone https://github.com/akshit-bansal11/lyric-veil
+cd lyric-veil
+npm install
+cp .env.example .env   <span class="c"># paste your client ID in</span>
+npm run dev</pre>
+        <p class="note">
+          Authentication is Authorization Code + PKCE against a loopback redirect, so no client
+          secret is ever shipped. The only scopes requested are read-only playback state — Lyric
+          Veil cannot control your music.
+        </p>
+      </section>
+
+      <footer>
+        <span>Lyrics from <a href="https://lrclib.net">LRCLIB</a>. Not affiliated with Spotify.</span>
+        <span><a href="https://github.com/akshit-bansal11/lyric-veil">Source</a> · MIT</span>
+      </footer>
+    </div>
+
+    <script>
+      // A miniature of the app's renderer: the same easing, the same --p wipe,
+      // driven by a fixed set of timings instead of a playback clock.
+      const LINES = [
+        { t: 0, text: 'I have been here before' },
+        { t: 2600, text: 'but always as a stranger' },
+        { t: 5900, text: 'the same room, a different light' },
+        { t: 9600, text: 'and nothing in it holds still' },
+        { t: 13800, text: 'long enough to name' },
+      ];
+      const LOOP_MS = 17600;
+      const MIN_WORD_MS = 90;
+
+      // Same synthesis the app uses: a floor for every word, surplus by weight.
+      function words(text, startMs, endMs) {
+        const tokens = text.split(' ');
+        const duration = Math.max(endMs - startMs, MIN_WORD_MS * tokens.length);
+        const surplus = duration - MIN_WORD_MS * tokens.length;
+        const weights = tokens.map((t) => t.length + 1);
+        const total = weights.reduce((a, b) => a + b, 0);
+        let cursor = startMs;
+        return tokens.map((token, i) => {
+          const slice = MIN_WORD_MS + (weights[i] / total) * surplus;
+          const start = cursor;
+          const end = i === tokens.length - 1 ? startMs + duration : cursor + slice;
+          cursor = end;
+          return { token, start, end };
+        });
+      }
+
+      const model = LINES.map((line, i) => {
+        const end = i + 1 < LINES.length ? LINES[i + 1].t : LOOP_MS;
+        return { ...line, end, words: words(line.text, line.t, Math.min(end, line.t + 8000)) };
+      });
+
+      const stage = document.getElementById('stage');
+      const rendered = model.map((line) => {
+        const p = document.createElement('p');
+        p.className = 'line';
+        const spans = line.words.map((w, i) => {
+          const s = document.createElement('span');
+          s.className = 'word';
+          s.textContent = i === line.words.length - 1 ? w.token : w.token + ' ';
+          p.appendChild(s);
+          return s;
+        });
+        stage.appendChild(p);
+        return { line, spans };
+      });
+
+      const started = performance.now();
+      function frame(now) {
+        const t = (now - started) % LOOP_MS;
+        let active = 0;
+        for (let i = 0; i < model.length; i += 1) if (model[i].t <= t) active = i;
+
+        for (let i = 0; i < rendered.length; i += 1) {
+          const { line, spans } = rendered[i];
+          const distance = Math.abs(i - active);
+          const state = distance === 0 ? 'active' : distance === 1 ? 'near' : 'far';
+          if (spans[0].parentElement.dataset.state !== state) {
+            spans[0].parentElement.dataset.state = state;
+          }
+          for (let w = 0; w < spans.length; w += 1) {
+            const word = line.words[w];
+            const p =
+              i < active ? 1 : i > active ? 0 : (t - word.start) / (word.end - word.start);
+            spans[w].style.setProperty('--p', String(Math.min(Math.max(p, 0), 1)));
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>
