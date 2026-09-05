@@ -24,52 +24,48 @@
 }
 
 @layer components {
+  /*
+   * Colour model. The whole surface has one text colour, set by the user, and
+   * three strengths of it:
+   *   --text-far   lines that are not the one being sung
+   *   --text-dim   words on the current line that are not being sung right now
+   *   full         the one word being sung
+   * Everything below is just those three, so "gray text, white current word"
+   * is what you get by default and every colour picker choice stays coherent.
+   */
   .lyrics-root {
-    /* Non-negotiable on a transparent window: without a shadow the text is
-       unreadable the moment the wallpaper behind it is light. */
-    text-shadow: 0 1px 2px rgb(0 0 0 / 0.55), 0 4px 18px rgb(0 0 0 / 0.45);
-  }
-
-  .lyrics-backdrop {
-    background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.28), transparent 70%);
-  }
-
-  .lyric-line {
-    transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 280ms
-      cubic-bezier(0.22, 1, 0.36, 1), filter 280ms cubic-bezier(0.22, 1, 0.36, 1);
-    transform-origin: left center;
+    /* Kept light. A heavy shadow muddies the gray and makes the text look smeared. */
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 2px 10px rgb(0 0 0 / 0.22);
   }
 
   .lyrics-stage {
-    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
   }
 
-  /*
-   * The wipe. A 200%-wide gradient with a hard stop at the midpoint means
-   * sliding background-position from 100% to 0% walks that edge cleanly across
-   * the glyphs. Clipping to the text keeps it a paint-only change: no layout,
-   * no repaint of anything but this element.
-   */
-  .lyric-word {
-    background-image: linear-gradient(
-      90deg,
-      rgb(255 255 255) 50%,
-      rgb(255 255 255 / var(--rest-opacity, 0.32)) 50%
-    );
-    background-size: 200% 100%;
-    background-position: calc(100% - var(--p, 0) * 100%) 0;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    will-change: background-position;
+  .lyric-line {
+    margin: 0;
+    color: rgb(var(--text-rgb) / var(--text-far));
+    transition: color 240ms ease;
   }
 
-  /* Plain (unsynced) lyrics have invented timing, so they get no wipe at all --
-     a wipe that is confidently wrong reads worse than honest static text. */
-  .lyric-word-static {
-    color: rgb(255 255 255);
-    background: none;
+  .lyric-line[data-active="true"] {
+    color: rgb(var(--text-rgb) / var(--text-dim));
+  }
+
+  /* The word being sung. A discrete step, not a sweep: the whole point is that
+     it reads as "this word", so there is nothing in between to animate. */
+  .lyric-word {
+    color: inherit;
+    transition: color 70ms linear;
+  }
+
+  .lyric-word[data-current="true"] {
+    color: rgb(var(--text-rgb) / 1);
+  }
+
+  .interlude-dot {
+    background: rgb(var(--text-rgb));
   }
 
   .drag-handle {
@@ -83,6 +79,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .lyric-line,
+  .lyric-word,
   .lyrics-stage {
     transition-duration: 1ms;
   }

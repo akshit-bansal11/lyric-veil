@@ -24,9 +24,15 @@ const bridge: LyricVeilBridge = {
   onConfig: (cb) => subscribe<AppConfig>(IPC.CONFIG_UPDATED, cb),
   onInteractiveMode: (cb) => subscribe<boolean>(IPC.INTERACTIVE_MODE, cb),
   onToast: (cb) => subscribe<string>(IPC.TOAST, cb),
+  onBackgroundImage: (cb) => subscribe<string | null>(IPC.BG_IMAGE, cb),
 
   adjustOffset: (deltaMs) => ipcRenderer.send(IPC.ADJUST_OFFSET, deltaMs),
   setConfig: (patch) => ipcRenderer.send(IPC.SET_CONFIG, patch),
+  pickBackgroundImage: async () => {
+    const result: unknown = await ipcRenderer.invoke(IPC.PICK_BG_IMAGE);
+    return result === true;
+  },
+  clearBackgroundImage: () => ipcRenderer.send(IPC.CLEAR_BG_IMAGE),
   startAuth: () => ipcRenderer.send(IPC.START_AUTH),
   quit: () => ipcRenderer.send(IPC.QUIT),
 };

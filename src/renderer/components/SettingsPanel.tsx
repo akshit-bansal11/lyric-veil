@@ -1,6 +1,5 @@
 import { cn } from '@renderer/lib/cn';
-import type { AppConfig } from '@shared/config';
-import { OFFSET_MAX_MS, OFFSET_MIN_MS } from '@shared/config';
+import type { AppConfig, TextAlign } from '@shared/config';
 
 export interface SettingsPanelProps {
   config: AppConfig;
@@ -9,11 +8,24 @@ export interface SettingsPanelProps {
 
 const set = (patch: Partial<AppConfig>): void => window.lyricVeil.setConfig(patch);
 
+const ALIGNMENTS: ReadonlyArray<{ value: TextAlign; label: string }> = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Centre' },
+  { value: 'right', label: 'Right' },
+];
+
+const RANGE = 'w-28 accent-white';
+const SWATCH = 'h-6 w-9 cursor-pointer rounded border border-white/20 bg-transparent p-0';
+
+/** Just the file name; the full path is noise in a panel this small. */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 /**
  * A labelled settings row. The visible text and the control are associated by
  * an explicit aria-label on each control rather than by wrapping them in a
- * `<label>`: the label text here is dynamic ("Offset +150 ms"), so the accessible
- * name has to carry the value, not just the field name.
+ * label element, because several labels here carry a live value.
  */
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -24,34 +36,41 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-/**
- * Only rendered in interactive mode. Everything here is also reachable from the
- * tray or a hotkey -- this panel exists so the settings are discoverable, not
- * because it is the only way in.
- */
+/** Only rendered in interactive mode. */
 export function SettingsPanel({ config, className }: SettingsPanelProps) {
   return (
     <div
       className={cn(
-        'no-drag w-64 rounded-xl border border-white/15 bg-black/70 p-3 text-xs text-white backdrop-blur-md',
+        'no-drag w-72 rounded-xl border border-white/15 bg-black/75 p-3 text-xs text-white backdrop-blur-md',
         className,
       )}
+      style={{ textAlign: 'left', fontSize: '12px', textShadow: 'none' }}
     >
       <div className="flex flex-col gap-2.5">
-        <Row label={`Offset ${config.offsetMs > 0 ? '+' : ''}${config.offsetMs} ms`}>
+        <Row label="Text colour">
           <input
-            type="range"
-            min={OFFSET_MIN_MS}
-            max={OFFSET_MAX_MS}
-            step={50}
-            value={config.offsetMs}
-            onChange={(e) => set({ offsetMs: Number(e.target.value) })}
-            aria-label="Sync offset in milliseconds"
-            className="w-28 accent-white"
+            type="color"
+            value={config.textColor}
+            onChange={(e) => set({ textColor: e.target.value })}
+            aria-label="Text colour"
+            className={SWATCH}
           />
         </Row>
 
-        <Row label={`Size ${config.fontSizePx}px`}>
+        <Row label={`Text opacity ${Math.round(config.textOpacity * 100)}%`}>
+          <input
+            type="range"
+            min={0.15}
+            max={1}
+            step={0.05}
+            value={config.textOpacity}
+            onChange={(e) => set({ textOpacity: Number(e.target.value) })}
+            aria-label="Opacity of words that are not being sung"
+            className={RANGE}
+          />
+        </Row>
+
+        <Row label={`Text size ${config.fontSizePx}px`}>
           <input
             type="range"
             min={20}
@@ -59,72 +78,109 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
             step={1}
             value={config.fontSizePx}
             onChange={(e) => set({ fontSizePx: Number(e.target.value) })}
-            aria-label="Font size in pixels"
-            className="w-28 accent-white"
+            aria-label="Text size in pixels"
+            className={RANGE}
           />
         </Row>
 
         <Row label="Align">
-          <select
-            value={config.textAlign}
-            onChange={(e) => set({ textAlign: e.target.value === 'center' ? 'center' : 'left' })}
-            aria-label="Text alignment"
-            className="rounded border border-white/20 bg-black/60 px-1.5 py-0.5"
-          >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-          </select>
+          <fieldset className="m-0 flex overflow-hidden rounded border border-white/20 p-0">
+            <legend className="sr-only">Text alignment</legend>
+            {ALIGNMENTS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => set({ textAlign: option.value })}
+                aria-pressed={config.textAlign === option.value}
+                className={cn(
+                  'px-2 py-0.5 transition-colors',
+                  config.textAlign === option.value ? 'bg-white text-black' : 'hover:bg-white/10',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </fieldset>
         </Row>
 
-        <Row label="Dim backdrop">
+        <Row label={`Position X ${config.posX}%`}>
           <input
-            type="checkbox"
-            checked={config.showBackdrop}
-            onChange={(e) => set({ showBackdrop: e.target.checked })}
-            aria-label="Dim backdrop behind the lyrics"
-            className="accent-white"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={config.posX}
+            onChange={(e) => set({ posX: Number(e.target.value) })}
+            aria-label="Horizontal position"
+            className={RANGE}
           />
         </Row>
 
-        <Row label="Hide in fullscreen">
+        <Row label={`Position Y ${config.posY}%`}>
           <input
-            type="checkbox"
-            checked={config.hideOnFullscreen}
-            onChange={(e) => set({ hideOnFullscreen: e.target.checked })}
-            aria-label="Hide the overlay in fullscreen apps"
-            className="accent-white"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={config.posY}
+            onChange={(e) => set({ posY: Number(e.target.value) })}
+            aria-label="Vertical position"
+            className={RANGE}
           />
         </Row>
 
-        <Row label="Launch at login">
+        <Row label="Background colour">
           <input
-            type="checkbox"
-            checked={config.launchOnStartup}
-            onChange={(e) => set({ launchOnStartup: e.target.checked })}
-            aria-label="Launch Lyric Veil at login"
-            className="accent-white"
+            type="color"
+            value={config.bgColor}
+            onChange={(e) => set({ bgColor: e.target.value })}
+            aria-label="Background colour"
+            className={SWATCH}
           />
         </Row>
 
-        <div className="mt-1 flex gap-2 border-white/10 border-t pt-2">
-          <button
-            type="button"
-            onClick={() => window.lyricVeil.startAuth()}
-            className="rounded border border-white/20 px-2 py-1 transition-colors hover:bg-white/10"
-          >
-            Reconnect
-          </button>
-          <button
-            type="button"
-            onClick={() => window.lyricVeil.quit()}
-            className="rounded border border-white/20 px-2 py-1 transition-colors hover:bg-white/10"
-          >
-            Quit
-          </button>
-        </div>
+        <Row label={`Background opacity ${Math.round(config.bgOpacity * 100)}%`}>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={config.bgOpacity}
+            onChange={(e) => set({ bgOpacity: Number(e.target.value) })}
+            aria-label="Background opacity"
+            className={RANGE}
+          />
+        </Row>
 
-        <p className="m-0 text-[10px] text-white/40 leading-tight">
-          Ctrl+Alt+L exits interactive mode. Ctrl+Alt+[ and ] nudge the offset.
+        <Row label="Background image">
+          <div className="flex items-center gap-1.5">
+            {config.bgImagePath ? (
+              <>
+                <span className="max-w-24 truncate text-white/80" title={config.bgImagePath}>
+                  {baseName(config.bgImagePath)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => window.lyricVeil.clearBackgroundImage()}
+                  className="rounded border border-white/20 px-1.5 py-0.5 transition-colors hover:bg-white/10"
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void window.lyricVeil.pickBackgroundImage()}
+                className="rounded border border-white/20 px-2 py-0.5 transition-colors hover:bg-white/10"
+              >
+                Choose…
+              </button>
+            )}
+          </div>
+        </Row>
+
+        <p className="m-0 pt-1 text-[10px] text-white/35 leading-tight">
+          Ctrl+Alt+L closes this. Drag anywhere outside it to move the overlay.
         </p>
       </div>
     </div>

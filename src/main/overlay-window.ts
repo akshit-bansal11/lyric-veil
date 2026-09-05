@@ -1,28 +1,47 @@
 import { join } from 'node:path';
-import type { AppConfig, WindowBounds } from '@shared/config';
+import { type AppConfig, clampPercent } from '@shared/config';
 import { BrowserWindow, screen, shell } from 'electron';
 import { createLogger } from './lib/logger';
 
 const log = createLogger('window');
 
-const DEFAULT_WIDTH = 820;
-const DEFAULT_HEIGHT = 380;
+export interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
-function defaultBounds(): WindowBounds {
+/**
+ * Position is stored as a percentage of the free space on the primary display
+ * rather than in pixels, so a slider in the settings panel maps to it directly
+ * and a changed resolution keeps the overlay roughly where it was.
+ */
+export function boundsFromConfig(config: AppConfig): Bounds {
   const { workArea } = screen.getPrimaryDisplay();
+  const width = Math.min(config.width, workArea.width);
+  const height = Math.min(config.height, workArea.height);
   return {
-    x: workArea.x + 80,
-    y: workArea.y + Math.round(workArea.height * 0.35),
-    width: DEFAULT_WIDTH,
-    height: DEFAULT_HEIGHT,
+    x: workArea.x + Math.round(((workArea.width - width) * config.posX) / 100),
+    y: workArea.y + Math.round(((workArea.height - height) * config.posY) / 100),
+    width,
+    height,
+  };
+}
+
+export function percentFromBounds(bounds: Bounds): Pick<AppConfig, 'posX' | 'posY'> {
+  const { workArea } = screen.getPrimaryDisplay();
+  const freeX = Math.max(workArea.width - bounds.width, 1);
+  const freeY = Math.max(workArea.height - bounds.height, 1);
+  return {
+    posX: clampPercent(((bounds.x - workArea.x) / freeX) * 100),
+    posY: clampPercent(((bounds.y - workArea.y) / freeY) * 100),
   };
 }
 
 export function createOverlayWindow(config: AppConfig, showOnReady: boolean): BrowserWindow {
-  const bounds = config.bounds ?? defaultBounds();
-
   const win = new BrowserWindow({
-    ...bounds,
+    ...boundsFromConfig(config),
 
     transparent: true,
     frame: false,
@@ -47,7 +66,7 @@ export function createOverlayWindow(config: AppConfig, showOnReady: boolean): Br
       nodeIntegration: false,
       sandbox: false,
       // Electron throttles unfocused windows to roughly 1fps. This window is
-      // never focused, so without this the word wipe silently stops animating.
+      // never focused, so without this the word highlight silently stops moving.
       backgroundThrottling: false,
     },
   });
@@ -111,9 +130,4 @@ export function setInteractive(win: BrowserWindow, interactive: boolean): void {
   win.setMovable(interactive);
   win.setResizable(interactive);
   if (interactive) win.focus();
-}
-
-export function currentBounds(win: BrowserWindow): WindowBounds {
-  const { x, y, width, height } = win.getBounds();
-  return { x, y, width, height };
 }

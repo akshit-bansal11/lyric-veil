@@ -13,7 +13,7 @@ const DOTS = [0, 1, 2];
 
 /**
  * Three dots that fill across an instrumental gap, driven by the same clock as
- * the word wipe. Without them a long break looks like the overlay has frozen.
+ * the word highlight. Without them a long break looks like the overlay has frozen.
  */
 export function InterludeDots({ startMs, endMs, clock, className }: InterludeDotsProps) {
   const dotRefs = useRef<Array<HTMLSpanElement | null>>([]);
@@ -29,8 +29,7 @@ export function InterludeDots({ startMs, endMs, clock, className }: InterludeDot
         if (!element) continue;
         // Each dot owns a third of the gap, so they light in sequence.
         const local = Math.min(Math.max(progress * DOTS.length - i, 0), 1);
-        element.style.opacity = String(0.22 + local * 0.78);
-        element.style.transform = `scale(${0.8 + local * 0.2})`;
+        element.style.opacity = String(0.25 + local * 0.75);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -40,14 +39,14 @@ export function InterludeDots({ startMs, endMs, clock, className }: InterludeDot
   }, [startMs, endMs, clock]);
 
   return (
-    <p className={cn('m-0 flex items-center gap-[0.35em] py-[0.3em]', className)}>
+    <p className={cn('m-0 flex items-center gap-[0.32em] py-[0.3em]', className)}>
       {DOTS.map((i) => (
         <span
           key={i}
           ref={(element) => {
             dotRefs.current[i] = element;
           }}
-          className="inline-block h-[0.34em] w-[0.34em] rounded-full bg-white"
+          className="interlude-dot inline-block h-[0.3em] w-[0.3em] rounded-full"
         />
       ))}
     </p>

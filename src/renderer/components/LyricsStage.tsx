@@ -43,7 +43,7 @@ export function LyricsStage({ lyrics, active, clock, config, className }: Lyrics
   const last = Math.min(lyrics.lines.length, Math.max(active.index, 0) + config.linesBelow + 1);
   const window = lyrics.lines.slice(first, last);
 
-  // Plain lyrics carry invented timings, so they are shown without a wipe.
+  // Plain lyrics carry invented timings, so no word is ever highlighted on them.
   const animated = lyrics.syncLevel !== 'plain';
 
   const activeLine = lyrics.lines[active.index];
@@ -62,16 +62,13 @@ export function LyricsStage({ lyrics, active, clock, config, className }: Lyrics
       >
         {window.map((line, i) => {
           const index = first + i;
-          const isActive = index === active.index && !active.inGap;
           return (
             <div key={line.id} ref={index === active.index ? activeRef : undefined}>
               <LyricLine
                 line={line}
-                isActive={isActive}
-                distance={Math.abs(index - active.index)}
+                isActive={index === active.index && !active.inGap}
                 clock={clock}
                 animated={animated}
-                inactiveOpacity={config.inactiveOpacity}
               />
               {showInterlude && index === active.index ? (
                 <InterludeDots startMs={line.endMs} endMs={nextLine.startMs} clock={clock} />

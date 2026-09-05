@@ -8,7 +8,7 @@ export interface StoredTokens {
   expiresAt: number;
 }
 
-const configStore = new Store<{ config: AppConfig }>({
+const configStore = new Store<{ config: Partial<AppConfig> }>({
   name: 'config',
   defaults: { config: DEFAULT_CONFIG },
 });
@@ -25,9 +25,26 @@ const tokenStore = new Store<{ tokens: StoredTokens | null }>({
   defaults: { tokens: null },
 });
 
+/**
+ * Only keys the current version knows are read back. A config written by an
+ * older build keeps loading, and keys that version has since dropped do not
+ * linger as untyped baggage on every object that passes through.
+ */
 export function readConfig(): AppConfig {
-  // Merge over defaults so a config written by an older version stays loadable.
-  return { ...DEFAULT_CONFIG, ...configStore.get('config') };
+  const stored = configStore.get('config');
+  const merged = { ...DEFAULT_CONFIG };
+  for (const key of Object.keys(DEFAULT_CONFIG) as Array<keyof AppConfig>) {
+    const value = stored[key];
+    if (value === undefined) continue;
+    // bgImagePath is the one nullable field; its default is null, so a typeof
+    // comparison against the default would reject every real path.
+    const accepted =
+      key === 'bgImagePath'
+        ? value === null || typeof value === 'string'
+        : typeof value === typeof DEFAULT_CONFIG[key];
+    if (accepted) (merged as Record<keyof AppConfig, unknown>)[key] = value;
+  }
+  return merged;
 }
 
 export function writeConfig(patch: Partial<AppConfig>): AppConfig {

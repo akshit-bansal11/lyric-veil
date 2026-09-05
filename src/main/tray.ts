@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import type { AppConfig } from '@shared/config';
 import { Menu, Tray, app, nativeImage } from 'electron';
 
 export interface TrayActions {
@@ -6,6 +7,8 @@ export interface TrayActions {
   toggleVisible: () => void;
   isInteractive: () => boolean;
   toggleInteractive: () => void;
+  getConfig: () => AppConfig;
+  setConfig: (patch: Partial<AppConfig>) => void;
   resetOffset: () => void;
   reconnect: () => void;
   openLogs: () => void;
@@ -25,6 +28,7 @@ export function createTray(actions: TrayActions): Tray {
   tray.setToolTip('Lyric Veil');
 
   const render = (): void => {
+    const config = actions.getConfig();
     tray.setContextMenu(
       Menu.buildFromTemplate([
         {
@@ -46,6 +50,25 @@ export function createTray(actions: TrayActions): Tray {
           },
         },
         { type: 'separator' },
+        {
+          label: 'Hide in fullscreen apps',
+          type: 'checkbox',
+          checked: config.hideOnFullscreen,
+          click: () => {
+            actions.setConfig({ hideOnFullscreen: !config.hideOnFullscreen });
+            render();
+          },
+        },
+        {
+          label: 'Launch at login',
+          type: 'checkbox',
+          checked: config.launchOnStartup,
+          click: () => {
+            actions.setConfig({ launchOnStartup: !config.launchOnStartup });
+            render();
+          },
+        },
+        { type: 'separator' },
         { label: 'Reset sync offset', accelerator: 'Ctrl+Alt+0', click: actions.resetOffset },
         { label: 'Reconnect Spotify', click: actions.reconnect },
         { label: 'Open logs folder', click: actions.openLogs },
@@ -57,7 +80,7 @@ export function createTray(actions: TrayActions): Tray {
   };
 
   render();
-  // Rebuild on open so the checkbox and the show/hide label are never stale.
+  // Rebuild on open so the checkboxes and the show/hide label are never stale.
   tray.on('click', render);
   return tray;
 }

@@ -1,4 +1,4 @@
-import type { LyricLine, PlaybackAnchor } from './types';
+import type { LyricLine, LyricWord, PlaybackAnchor } from './types';
 
 /** Beyond this the difference is a seek or a track change, not drift. */
 export const HARD_RESYNC_THRESHOLD_MS = 700;
@@ -95,4 +95,19 @@ export function findLineIndex(lines: LyricLine[], t: number): number {
     }
   }
   return found;
+}
+
+/**
+ * Index of the word being sung at time `t` within a line, or -1 when `t` falls
+ * outside every word. Lines are short, so a linear scan is cheaper than the
+ * bookkeeping a cursor would need to survive seeks.
+ */
+export function findWordIndex(words: ReadonlyArray<LyricWord>, t: number): number {
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i];
+    if (!word) break;
+    if (t < word.startMs) return -1;
+    if (t < word.endMs) return i;
+  }
+  return -1;
 }

@@ -64,3 +64,10 @@ export function useToast(durationMs = 1400): string | null {
 
   return toast;
 }
+
+/** The chosen background image as a data: URL, or null. Never persisted in config. */
+export function useBackgroundImage(): string | null {
+  const [image, setImage] = useState<string | null>(null);
+  useEffect(() => window.lyricVeil.onBackgroundImage(setImage), []);
+  return image;
+}

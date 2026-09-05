@@ -1,29 +1,52 @@
-import type { AppConfig } from '@shared/config';
+import { type AppConfig, DEFAULT_CONFIG } from '@shared/config';
 import { IPC } from '@shared/ipc';
 import { ipcMain } from 'electron';
 
 export interface IpcActions {
   adjustOffset: (deltaMs: number) => void;
   setConfig: (patch: Partial<AppConfig>) => void;
+  pickBackgroundImage: () => Promise<boolean>;
+  clearBackgroundImage: () => void;
   startAuth: () => void;
   quit: () => void;
 }
 
 /**
- * Renderer-to-main channels. Every payload is re-validated here rather than
- * trusted: the preload surface is narrow, but it is still a boundary.
+ * Keep only known keys whose value has the type the default has. The renderer
+ * is our own code behind context isolation, but this is still a boundary, and
+ * a config write is the one place it can reach the persisted store.
+ *
+ * bgImagePath is excluded on purpose: the renderer never names a file. It asks
+ * main to open a picker, and main decides what gets read.
  */
+function sanitizeConfigPatch(input: unknown): Partial<AppConfig> {
+  const patch: Partial<AppConfig> = {};
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return patch;
+  const candidate = input as Record<string, unknown>;
+
+  for (const key of Object.keys(DEFAULT_CONFIG) as Array<keyof AppConfig>) {
+    if (key === 'bgImagePath' || !(key in candidate)) continue;
+    const value = candidate[key];
+    if (typeof value === typeof DEFAULT_CONFIG[key]) {
+      (patch as Record<keyof AppConfig, unknown>)[key] = value;
+    }
+  }
+  return patch;
+}
+
+/** Renderer-to-main channels. Every payload is re-validated here rather than trusted. */
 export function registerIpcHandlers(actions: IpcActions): void {
   ipcMain.on(IPC.ADJUST_OFFSET, (_event, deltaMs: unknown) => {
     if (typeof deltaMs === 'number' && Number.isFinite(deltaMs)) actions.adjustOffset(deltaMs);
   });
 
   ipcMain.on(IPC.SET_CONFIG, (_event, patch: unknown) => {
-    if (patch && typeof patch === 'object' && !Array.isArray(patch)) {
-      actions.setConfig(patch as Partial<AppConfig>);
-    }
+    const clean = sanitizeConfigPatch(patch);
+    if (Object.keys(clean).length > 0) actions.setConfig(clean);
   });
 
+  ipcMain.handle(IPC.PICK_BG_IMAGE, () => actions.pickBackgroundImage());
+  ipcMain.on(IPC.CLEAR_BG_IMAGE, () => actions.clearBackgroundImage());
   ipcMain.on(IPC.START_AUTH, () => actions.startAuth());
   ipcMain.on(IPC.QUIT, () => actions.quit());
 }

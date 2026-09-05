@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { extname } from 'node:path';
 import { type AppConfig, clampOffset } from '@shared/config';
 import { IPC } from '@shared/ipc';
 import type { AppStatus, Lyrics, PlaybackAnchor, TrackInfo } from '@shared/types';
-import { type BrowserWindow, type Tray, app, shell } from 'electron';
+import { type BrowserWindow, type Tray, app, dialog, shell } from 'electron';
 import {
   AuthError,
   configureClientId,
@@ -11,7 +13,12 @@ import {
 import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createLogger } from './lib/logger';
-import { createOverlayWindow, currentBounds, setInteractive } from './overlay-window';
+import {
+  boundsFromConfig,
+  createOverlayWindow,
+  percentFromBounds,
+  setInteractive,
+} from './overlay-window';
 import { evictOverflow, resolveLyrics } from './services/lyrics-service';
 import { type Poller, startPoller } from './services/playback-poller';
 import { readConfig, writeConfig } from './services/store';
@@ -19,16 +26,28 @@ import { createTray } from './tray';
 
 const log = createLogger('main');
 
+const IMAGE_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
+};
+/** A data: URL is held in renderer memory; past this it costs more than it is worth. */
+const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let poller: Poller | null = null;
-let config: AppConfig = { ...readConfig() };
+let config: AppConfig = readConfig();
 let interactive = false;
 /** `--hidden` is passed by the login-item entry so a startup launch is not intrusive. */
 let visible = !process.argv.includes('--hidden');
 let lastStatus: AppStatus | null = null;
 /** Guards against a slow lyrics fetch landing after the track has already changed. */
 let lyricsRequestId = 0;
+/** The background image bytes, kept out of the persisted config. */
+let bgImageDataUrl: string | null = null;
 
 function send(channel: string, payload?: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -44,9 +63,19 @@ function pushConfig(): void {
   send(IPC.CONFIG_UPDATED, config);
 }
 
-function applyConfig(patch: Partial<AppConfig>): void {
+/** Persist and broadcast, with no window side effects. */
+function commitConfig(patch: Partial<AppConfig>): void {
   config = writeConfig(patch);
+  pushConfig();
+}
 
+/** Persist, broadcast, and apply whatever the change means for the window. */
+function applyConfig(patch: Partial<AppConfig>): void {
+  commitConfig(patch);
+
+  if (win && ('posX' in patch || 'posY' in patch || 'width' in patch || 'height' in patch)) {
+    win.setBounds(boundsFromConfig(config));
+  }
   if (patch.launchOnStartup !== undefined) {
     // Electron owns the registry entry; hand-rolling one drifts from what it expects.
     app.setLoginItemSettings({ openAtLogin: config.launchOnStartup, args: ['--hidden'] });
@@ -54,19 +83,31 @@ function applyConfig(patch: Partial<AppConfig>): void {
   if (patch.hideOnFullscreen !== undefined && win) {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: !config.hideOnFullscreen });
   }
+}
 
-  pushConfig();
+/** The user dragged or resized the window: record where it ended up. */
+function syncBoundsFromWindow(): void {
+  if (!win) return;
+  const bounds = win.getBounds();
+  const next = { ...percentFromBounds(bounds), width: bounds.width, height: bounds.height };
+  const changed =
+    next.posX !== config.posX ||
+    next.posY !== config.posY ||
+    next.width !== config.width ||
+    next.height !== config.height;
+  // A programmatic setBounds also fires these events; only a real change is recorded.
+  if (changed) commitConfig(next);
 }
 
 function adjustOffset(deltaMs: number): void {
   const next = clampOffset(config.offsetMs + deltaMs);
   if (next === config.offsetMs) return;
-  applyConfig({ offsetMs: next });
+  commitConfig({ offsetMs: next });
   send(IPC.TOAST, `Sync offset ${next > 0 ? '+' : ''}${next} ms`);
 }
 
 function resetOffset(): void {
-  applyConfig({ offsetMs: 0 });
+  commitConfig({ offsetMs: 0 });
   send(IPC.TOAST, 'Sync offset reset');
 }
 
@@ -75,9 +116,6 @@ function toggleInteractive(): void {
   interactive = !interactive;
   setInteractive(win, interactive);
   send(IPC.INTERACTIVE_MODE, interactive);
-  // Leaving interactive mode is the only moment the user could have moved or
-  // resized the window, so that is the moment worth persisting.
-  if (!interactive) applyConfig({ bounds: currentBounds(win) });
 }
 
 function toggleVisible(): void {
@@ -85,6 +123,54 @@ function toggleVisible(): void {
   visible = !visible;
   if (visible) win.showInactive();
   else win.hide();
+}
+
+function loadBackgroundImage(path: string | null): string | null {
+  if (!path) return null;
+  const mime = IMAGE_MIME[extname(path).slice(1).toLowerCase()];
+  if (!mime) return null;
+  try {
+    const bytes = readFileSync(path);
+    if (bytes.length > MAX_IMAGE_BYTES) {
+      log.warn(`background image too large: ${bytes.length} bytes`);
+      return null;
+    }
+    return `data:${mime};base64,${bytes.toString('base64')}`;
+  } catch (error) {
+    log.warn('background image unreadable', error);
+    return null;
+  }
+}
+
+function pushBackgroundImage(): void {
+  send(IPC.BG_IMAGE, bgImageDataUrl);
+}
+
+async function pickBackgroundImage(): Promise<boolean> {
+  const result = await dialog.showOpenDialog({
+    title: 'Choose a background image',
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: Object.keys(IMAGE_MIME) }],
+  });
+  const file = result.filePaths[0];
+  if (result.canceled || !file) return false;
+
+  const dataUrl = loadBackgroundImage(file);
+  if (!dataUrl) {
+    send(IPC.TOAST, 'Could not use that image (PNG, JPG, WebP or GIF, up to 12 MB)');
+    return false;
+  }
+
+  bgImageDataUrl = dataUrl;
+  commitConfig({ bgImagePath: file });
+  pushBackgroundImage();
+  return true;
+}
+
+function clearBackgroundImage(): void {
+  bgImageDataUrl = null;
+  commitConfig({ bgImagePath: null });
+  pushBackgroundImage();
 }
 
 async function onTrackChange(track: TrackInfo | null): Promise<void> {
@@ -132,11 +218,16 @@ function bootstrap(): void {
   configureClientId(import.meta.env.MAIN_VITE_SPOTIFY_CLIENT_ID);
 
   win = createOverlayWindow(config, visible);
+  win.on('moved', syncBoundsFromWindow);
+  win.on('resized', syncBoundsFromWindow);
   evictOverflow();
+  bgImageDataUrl = loadBackgroundImage(config.bgImagePath);
 
   registerIpcHandlers({
     adjustOffset,
-    setConfig: (patch) => applyConfig(patch),
+    setConfig: applyConfig,
+    pickBackgroundImage,
+    clearBackgroundImage,
     startAuth: () => void startAuth(),
     quit,
   });
@@ -148,6 +239,8 @@ function bootstrap(): void {
     toggleVisible,
     isInteractive: () => interactive,
     toggleInteractive,
+    getConfig: () => config,
+    setConfig: applyConfig,
     resetOffset,
     reconnect: () => void startAuth(),
     openLogs: () => void shell.openPath(app.getPath('logs')),
@@ -162,6 +255,7 @@ function bootstrap(): void {
 
   win.webContents.once('did-finish-load', () => {
     pushConfig();
+    pushBackgroundImage();
     if (lastStatus) send(IPC.STATUS, lastStatus);
   });
 
