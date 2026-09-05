@@ -1,6 +1,9 @@
 import { join } from 'node:path';
 import type { AppConfig, WindowBounds } from '@shared/config';
 import { BrowserWindow, screen, shell } from 'electron';
+import { createLogger } from './lib/logger';
+
+const log = createLogger('window');
 
 const DEFAULT_WIDTH = 820;
 const DEFAULT_HEIGHT = 380;
@@ -57,8 +60,35 @@ export function createOverlayWindow(config: AppConfig, showOnReady: boolean): Br
 
   // showInactive, never show: showing normally would take focus from whatever
   // the user is actually doing, which is the one thing an overlay must not do.
-  win.once('ready-to-show', () => {
-    if (showOnReady) win.showInactive();
+  //
+  // Triggered on whichever of ready-to-show and did-finish-load lands first.
+  // ready-to-show alone is not enough: it fires on first paint, and a fully
+  // transparent window with no opaque background can fail to produce one, which
+  // leaves the window created, positioned and topmost but never shown -- the
+  // process looks healthy and nothing appears on screen.
+  let shown = false;
+  const reveal = (): void => {
+    if (shown || !showOnReady || win.isDestroyed()) return;
+    shown = true;
+    win.showInactive();
+  };
+
+  win.once('ready-to-show', reveal);
+  win.webContents.once('did-finish-load', reveal);
+
+  // electron-vite sets ELECTRON_RENDERER_URL in dev so the renderer comes from
+  // the vite server with hot reload; a packaged build has no server and loads
+  // the built file instead.
+  if (process.env.ELECTRON_RENDERER_URL) {
+    void win.loadURL(process.env.ELECTRON_RENDERER_URL);
+  } else {
+    void win.loadFile(join(__dirname, '../renderer/index.html'));
+  }
+
+  win.webContents.on('did-fail-load', (_event, code, description) => {
+    // Silence here is what the missing load looked like: a healthy process and
+    // an empty window. Make the next one say so.
+    log.error(`renderer failed to load: ${code} ${description}`);
   });
 
   // Nothing in this window should ever navigate; a lyric provider link would

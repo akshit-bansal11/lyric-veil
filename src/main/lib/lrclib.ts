@@ -76,15 +76,20 @@ async function search(query: LrclibQuery): Promise<LrclibRecord | null> {
  * improves the hit rate and costs one regex.
  */
 export function cleanTitle(title: string): string {
-  return title
-    .replace(
-      /\s*[([][^)\]]*(?:remaster|remix|version|edit|live|feat\.?|with|mono|stereo)[^)\]]*[)\]]/gi,
-      '',
-    )
-    // The keyword is often not adjacent to the dash: 'Song - 2019 Remaster'.
-    .replace(/\s*-\s*(?:[^-]*\b)?(?:remaster(?:ed)?|remix|version|edit|live|mono|stereo|mix)\b.*$/i, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return (
+    title
+      .replace(
+        /\s*[([][^)\]]*(?:remaster|remix|version|edit|live|feat\.?|with|mono|stereo)[^)\]]*[)\]]/gi,
+        '',
+      )
+      // The keyword is often not adjacent to the dash: 'Song - 2019 Remaster'.
+      .replace(
+        /\s*-\s*(?:[^-]*\b)?(?:remaster(?:ed)?|remix|version|edit|live|mono|stereo|mix)\b.*$/i,
+        '',
+      )
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  );
 }
 
 /** First artist only -- LRCLIB indexes the primary credit, not the full billing. */

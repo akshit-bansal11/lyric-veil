@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import {
   type ClockState,
   advance,
@@ -6,6 +5,7 @@ import {
   createClockState,
   readPosition,
 } from '@shared/timeline';
+import { useEffect, useRef } from 'react';
 
 export type ClockRef = { readonly current: ClockState };
 
