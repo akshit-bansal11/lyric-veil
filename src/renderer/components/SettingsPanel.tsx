@@ -311,8 +311,8 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
         </Row>
         {config.alwaysOnTop ? null : (
           <p className="m-0 text-[10px] text-white/35 leading-tight">
-            Off: it sits on the desktop and any window you use covers it. Ctrl+Alt+H twice brings it
-            back to the front.
+            Off: pinned to the desktop itself — behind every window, above the icons, and it stays
+            put when you press Win+D.
           </p>
         )}
 
