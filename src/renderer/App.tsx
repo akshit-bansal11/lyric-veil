@@ -87,7 +87,15 @@ export function App() {
         )}
       </div>
 
-      {interactive ? <SettingsPanel config={config} className="absolute top-3 right-3" /> : null}
+      {interactive ? (
+        <SettingsPanel
+          config={config}
+          // Keep the panel off the text: right-aligned lyrics hug the right
+          // edge, so the panel takes the left, and vice versa. Centred text is
+          // under it either way; nothing inside the window fixes that.
+          className={cn('absolute top-3', config.textAlign === 'right' ? 'left-3' : 'right-3')}
+        />
+      ) : null}
 
       {toast ? (
         <div className="pointer-events-none absolute bottom-3 left-7 rounded-full bg-black/60 px-3 py-1 text-[0.4em] text-white/90">
