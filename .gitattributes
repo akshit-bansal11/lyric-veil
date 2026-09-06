@@ -1,0 +1,14 @@
+# Normalise every text file to LF in the repository and on checkout.
+#
+# Without this, Git for Windows checks out CRLF while Biome formats to LF, so
+# `biome ci` reports every file as entirely changed. Locally that was invisible:
+# `biome check --write` rewrote the working tree to LF and exited clean, then
+# Git converted it back on the next checkout. CI failed on all 53 files from the
+# first run for this reason alone.
+* text=auto eol=lf
+
+# Binary: never touch these.
+*.png binary
+*.ico binary
+*.exe binary
+*.woff2 binary
