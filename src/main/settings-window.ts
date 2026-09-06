@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { BrowserWindow, screen } from 'electron';
+import { iconPath } from './tray';
 
 const WIDTH = 332;
 const HEIGHT = 720;
@@ -24,7 +25,8 @@ export function createSettingsWindow(): BrowserWindow {
     maximizable: false,
     fullscreenable: false,
     alwaysOnTop: true,
-    skipTaskbar: true,
+    skipTaskbar: false,
+    icon: iconPath(),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -34,6 +36,8 @@ export function createSettingsWindow(): BrowserWindow {
     },
   });
   win.setMenuBarVisibility(false);
+  // The shared page title is "Lyric Veil"; keep this window's own name.
+  win.on('page-title-updated', (event) => event.preventDefault());
 
   // Same renderer bundle as the overlay; the hash tells it which root to mount.
   const devUrl = process.env.ELECTRON_RENDERER_URL;

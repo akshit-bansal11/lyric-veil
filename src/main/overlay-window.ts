@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { type AppConfig, clampPercent } from '@shared/config';
 import { BrowserWindow, screen, shell } from 'electron';
 import { createLogger } from './lib/logger';
+import { iconPath } from './tray';
 
 const log = createLogger('window');
 
@@ -49,7 +50,11 @@ export function createOverlayWindow(config: AppConfig, showOnReady: boolean): Br
     backgroundColor: '#00000000',
 
     alwaysOnTop: config.alwaysOnTop,
-    skipTaskbar: true,
+    // A taskbar entry, like any running app. It cannot be focused from there --
+    // the overlay is click-through -- and minimising it is refused below, so
+    // the entry shows the app is running and nothing more. Ctrl+Alt+H hides.
+    skipTaskbar: false,
+    icon: iconPath(),
     // Keeps the overlay out of Alt-Tab and stops it stealing focus from games.
     focusable: false,
     resizable: false,

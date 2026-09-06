@@ -15,7 +15,8 @@ export interface TrayActions {
   quit: () => void;
 }
 
-function iconPath(): string {
+/** The app icon, used by the tray and as the taskbar icon of every window. */
+export function iconPath(): string {
   // resources/ is packed inside app.asar, not beside it, and Electron reads
   // asar paths transparently -- so the app path works packaged and in dev alike.
   // Looking beside the asar (process.resourcesPath) found nothing in the
