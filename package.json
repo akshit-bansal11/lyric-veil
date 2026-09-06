@@ -1,6 +1,6 @@
 {
   "name": "lyric-veil",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A frameless, transparent, click-through desktop overlay showing word-synced lyrics for whatever is playing on Spotify.",
   "license": "MIT",
   "author": "Akshit Bansal",
