@@ -2,8 +2,12 @@ import { join } from 'node:path';
 import { BrowserWindow, screen } from 'electron';
 import { iconPath } from './tray';
 
-const WIDTH = 332;
-const HEIGHT = 720;
+/**
+ * Content size, not outer size: `width` on a framed window includes the border,
+ * which left the panel's controls clipped at the right edge by the frame width.
+ */
+const WIDTH = 372;
+const HEIGHT = 700;
 /** Breathing room between the overlay's edge and the panel. */
 const GAP = 12;
 
@@ -17,6 +21,7 @@ export function createSettingsWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: WIDTH,
     height: HEIGHT,
+    useContentSize: true,
     show: false,
     title: 'Lyric Veil settings',
     backgroundColor: '#0b0b0c',

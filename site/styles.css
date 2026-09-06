@@ -1,0 +1,507 @@
+/* Lyric Veil microsite.
+   No build step, no framework, no external requests -- the CSP is 'self' only.
+   The type system is the product's own: one weight ramp, and meaning carried by
+   the contrast between a lit word and a dim one. */
+
+:root {
+  --bg: #0a0a0b;
+  --bg-raised: #121214;
+  --line: #232327;
+  --line-soft: #1a1a1d;
+  --ink: #f5f5f6;
+  --ink-2: #a1a1a8;
+  --ink-3: #6b6b73;
+  --accent: #f0b429;
+  --accent-ink: #1a1205;
+
+  --shell: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  --wrap: 68rem;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--shell);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+}
+
+.wrap {
+  width: min(100% - 2.5rem, var(--wrap));
+  margin-inline: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ---------------------------------------------------------------- masthead */
+
+.masthead {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 0;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mark svg {
+  display: block;
+}
+
+.masthead nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.masthead nav a {
+  color: var(--ink-2);
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+.masthead nav a:hover {
+  color: var(--ink);
+}
+
+/* -------------------------------------------------------------------- hero */
+
+/* The text band is deliberately short. Product-dominant means the running
+   overlay carries the fold; anything the band gains, the product loses. */
+.hero {
+  position: relative;
+  padding-top: clamp(3.5rem, 10vh, 6rem);
+}
+
+h1 {
+  margin: 0 0 0.8rem;
+  font-size: clamp(2.1rem, 4.6vw, 3.4rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  max-width: 24ch;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--ink-2);
+  font-size: clamp(0.9875rem, 1.35vw, 1.0625rem);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.35rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.btn:hover {
+  border-color: #3a3a42;
+  background: #16161a;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-primary:hover {
+  background: #ffc540;
+  border-color: #ffc540;
+}
+
+.micro {
+  margin: 0.7rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--ink-3);
+}
+
+/* ------------------------------------------------------- the desktop scene */
+/* Product-dominant fold: the running overlay takes most of the viewport and is
+   cut by both the bottom and the right edge, so it reads as a desktop that
+   continues past the screen rather than a framed screenshot. */
+
+.scene {
+  position: relative;
+  margin-top: clamp(1.5rem, 3vh, 2.25rem);
+  /* Full bleed: a desktop has no margins, and the extra width is what makes the
+     product read as the dominant mass rather than a figure beside the text. */
+  margin-inline: calc(50% - 50vw);
+  min-height: 64vh;
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+  background: radial-gradient(70rem 38rem at 8% 115%, rgba(150, 108, 58, 0.26), transparent 62%),
+    radial-gradient(60rem 34rem at 92% -12%, rgba(72, 86, 112, 0.32), transparent 60%), #0d0d10;
+}
+
+/* Grain kills the flat-plastic look of a pure gradient. */
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E");
+}
+
+.scene-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  /* Align the scene's own content with the page container above it. */
+  padding: 0.7rem max(1.25rem, calc(50vw - 34rem));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+
+.chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.modes {
+  margin-left: auto;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.modes button {
+  min-height: 26px;
+  padding: 0 0.6rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+.modes button:hover {
+  color: var(--ink);
+}
+.modes button[aria-pressed="true"] {
+  background: var(--ink);
+  color: #0a0a0b;
+}
+
+.stage {
+  position: relative;
+  z-index: 1;
+  padding: clamp(2rem, 4.5vh, 3.25rem) max(1.25rem, calc(50vw - 34rem)) 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12em;
+  font-weight: 700;
+  font-size: clamp(1.15rem, 2.9vw, 2rem);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 12px rgb(0 0 0 / 0.28);
+}
+
+/* The colour model, exactly as the app defines it: one lit word, everything
+   else the same colour held back. */
+.line {
+  margin: 0;
+  color: rgb(255 255 255 / 0.26);
+  transition: color 240ms ease;
+}
+.line[data-state="active"] {
+  color: rgb(255 255 255 / 0.42);
+}
+.line[data-state="active"][data-mode="line"] {
+  color: rgb(255 255 255);
+}
+
+.word {
+  color: inherit;
+  transition: color 70ms linear;
+}
+.word[data-current="true"] {
+  color: rgb(255 255 255);
+}
+
+/* ------------------------------------------------------------- spec strip */
+
+.specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2.25rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+.specs b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------- sections */
+
+section {
+  padding: clamp(3.5rem, 8vh, 6.5rem) 0;
+}
+section + section {
+  border-top: 1px solid var(--line-soft);
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
+}
+
+p.body {
+  margin: 0;
+  color: var(--ink-2);
+  max-width: 58ch;
+}
+
+/* Alternating feature rows -- never a uniform icon grid. */
+.row {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 62rem) {
+  .row {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+  .row.flip > *:first-child {
+    order: 2;
+  }
+}
+
+.demo-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+/* -------------------------------------------------------------- hotkey grid */
+
+.keys {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem 1.75rem;
+  align-items: baseline;
+  margin: 0;
+}
+.keys dt {
+  margin: 0;
+  white-space: nowrap;
+}
+.keys dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+kbd {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 0.22rem 0.45rem;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--r-sm);
+  background: #141418;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ pipeline */
+
+.pipeline {
+  width: 100%;
+  height: auto;
+  margin-top: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+}
+
+/* ---------------------------------------------------------------- two column */
+
+.cols {
+  display: grid;
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 62rem) {
+  .cols {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+pre {
+  margin: 0;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: #101014;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: #cfcfd6;
+}
+pre .c {
+  color: var(--ink-3);
+}
+
+.notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.notes li {
+  padding-left: 1.1rem;
+  position: relative;
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+.notes li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.notes b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------- footer */
+
+footer {
+  padding: 2.5rem 0 3.5rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 0.8125rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+}
+footer a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+footer a:hover {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

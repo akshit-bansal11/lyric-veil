@@ -60,9 +60,14 @@ function baseName(path: string): string {
  */
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-white/60">{label}</span>
-      {children}
+    // Grid, not flex-between: the label column may shrink to nothing and
+    // truncate, so a long label can never push a control past the panel edge.
+    // With flex the controls overflowed the window and were cut off at the right.
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+      <span className="truncate text-white/60" title={label}>
+        {label}
+      </span>
+      <div className="justify-self-end">{children}</div>
     </div>
   );
 }
@@ -108,7 +113,7 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
   return (
     <div
       className={cn(
-        'no-drag max-h-[calc(100%-1.5rem)] w-72 overflow-y-auto rounded-xl border border-white/15 bg-black/80 p-3 text-xs text-white backdrop-blur-md',
+        'no-drag max-h-[calc(100%-1.5rem)] w-72 overflow-y-auto overflow-x-hidden rounded-xl border border-white/15 bg-black/80 p-3 text-xs text-white backdrop-blur-md',
         className,
       )}
       style={{
