@@ -73,6 +73,16 @@ export function createOverlayWindow(config: AppConfig, showOnReady: boolean): Br
 
   // Plain alwaysOnTop loses to some fullscreen apps; the screen-saver level does not.
   win.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
+
+  // Show Desktop (Win+D) works by minimising every window, topmost and
+  // "non-minimisable" ones included. The overlay never has a reason to be
+  // minimised, so it refuses: restoring inside the event lands it back on the
+  // desktop the shell just cleared. Re-parenting into the desktop was tried
+  // first and a transparent window stops painting there; this keeps rendering
+  // untouched and is one line.
+  win.on('minimize', () => {
+    if (!win.isDestroyed()) win.restore();
+  });
   // forward:true still delivers mousemove to the renderer while clicks pass through.
   win.setIgnoreMouseEvents(true, { forward: true });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: !config.hideOnFullscreen });

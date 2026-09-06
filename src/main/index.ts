@@ -10,7 +10,6 @@ import {
   ensureAuthenticated,
   isConfigured,
 } from './auth/spotify-auth';
-import { pinToDesktop, unpinFromDesktop } from './desktop-pin';
 import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { registerIpcHandlers } from './ipc-handlers';
 import { createLogger } from './lib/logger';
@@ -49,10 +48,6 @@ let lastStatus: AppStatus | null = null;
 let lyricsRequestId = 0;
 /** The background image bytes, kept out of the persisted config. */
 let bgImageDataUrl: string | null = null;
-/** True while the window is a child of the desktop rather than a top-level window. */
-let pinned = false;
-/** Re-parenting is asynchronous and must not interleave; every change queues here. */
-let zOrderQueue: Promise<void> = Promise.resolve();
 
 function send(channel: string, payload?: unknown): void {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -88,38 +83,22 @@ function applyConfig(patch: Partial<AppConfig>): void {
   if (patch.hideOnFullscreen !== undefined && win) {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: !config.hideOnFullscreen });
   }
-  if (patch.alwaysOnTop !== undefined) void applyZOrder();
+  if (patch.alwaysOnTop !== undefined) applyZOrder();
 }
 
 /**
- * The window has two homes. Above: a topmost overlay, hidden by Win+D like
- * every other window. Desktop: a child of the desktop itself -- behind every
- * window, above the icons, and immune to Win+D. Interactive mode always lifts
- * it out, because a desktop child cannot take the mouse or focus.
+ * Above every window, or in the normal stack where any window the user touches
+ * covers it. Interactive mode is always on top, so the panel can be reached.
+ * Either way the overlay survives Win+D; see the minimize handler in overlay-window.
  */
-function applyZOrder(): Promise<void> {
-  zOrderQueue = zOrderQueue.then(async () => {
-    if (!win || win.isDestroyed()) return;
-    const wantPinned = !config.alwaysOnTop && !interactive;
-
-    if (wantPinned && !pinned) {
-      win.setAlwaysOnTop(false);
-      pinned = await pinToDesktop(win);
-    } else if (!wantPinned && pinned) {
-      pinned = !(await unpinFromDesktop(win));
-      // Re-parenting leaves the placement in the old parent's coordinates.
-      win.setBounds(boundsFromConfig(config));
-    }
-
-    if (!pinned) win.setAlwaysOnTop(config.alwaysOnTop || interactive, 'screen-saver');
-  });
-  return zOrderQueue;
+function applyZOrder(): void {
+  if (!win || win.isDestroyed()) return;
+  win.setAlwaysOnTop(config.alwaysOnTop || interactive, 'screen-saver');
 }
 
 /** The user dragged or resized the window: record where it ended up. */
 function syncBoundsFromWindow(): void {
-  // A desktop child reports parent-relative bounds; nothing to learn from those.
-  if (!win || pinned) return;
+  if (!win) return;
   const bounds = win.getBounds();
   const next = { ...percentFromBounds(bounds), width: bounds.width, height: bounds.height };
   const changed =
@@ -145,17 +124,10 @@ function resetOffset(): void {
 
 function toggleInteractive(): void {
   if (!win) return;
-  const target = win;
   interactive = !interactive;
   send(IPC.INTERACTIVE_MODE, interactive);
-
-  if (interactive) {
-    // Lift it out of the desktop first; only a top-level window can be dragged or focused.
-    void applyZOrder().then(() => setInteractive(target, true));
-  } else {
-    setInteractive(target, false);
-    void applyZOrder();
-  }
+  applyZOrder();
+  setInteractive(win, interactive);
 }
 
 function toggleVisible(): void {
@@ -297,8 +269,6 @@ function bootstrap(): void {
     pushConfig();
     pushBackgroundImage();
     if (lastStatus) send(IPC.STATUS, lastStatus);
-    // The window is shown by now; a desktop pin needs a real, visible HWND.
-    void applyZOrder();
   });
 
   // Silent refresh on launch; only falls through to a browser when there is no
