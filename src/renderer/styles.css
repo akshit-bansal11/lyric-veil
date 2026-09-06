@@ -45,12 +45,12 @@
 
   .lyric-line {
     margin: 0;
-    color: rgb(var(--text-rgb) / var(--text-far));
+    color: rgb(var(--inactive-rgb) / var(--text-far));
     transition: color 240ms ease;
   }
 
   .lyric-line[data-active="true"] {
-    color: rgb(var(--text-rgb) / var(--text-dim));
+    color: rgb(var(--inactive-rgb) / var(--text-dim));
   }
 
   /* Line mode: the whole current line at full strength, no per-word state. */

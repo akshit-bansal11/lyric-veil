@@ -47,6 +47,7 @@ export function App() {
     textAlign: config.textAlign,
     ['--font-family' as string]: config.fontFamily,
     ['--text-rgb' as string]: hexToRgbTriplet(config.textColor),
+    ['--inactive-rgb' as string]: hexToRgbTriplet(config.inactiveColor),
     ['--text-dim' as string]: String(config.textOpacity),
     ['--text-far' as string]: String(config.textOpacity * FAR_LINE_FACTOR),
   };

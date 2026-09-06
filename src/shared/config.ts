@@ -14,8 +14,11 @@ export interface AppConfig {
   /** Float above every other window, or sit in the normal stack and be covered by them. */
   alwaysOnTop: boolean;
 
+  /** Colour of the word (or line) being sung. */
   textColor: string;
-  /** Strength of every word that is not the one being sung. This is "the gray". */
+  /** Colour of everything else: the rest of the current line, and the other lines. */
+  inactiveColor: string;
+  /** Strength of the inactive colour. With white this is "the gray". */
   textOpacity: number;
   fontSizePx: number;
   fontFamily: string;
@@ -56,6 +59,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   alwaysOnTop: true,
 
   textColor: '#ffffff',
+  inactiveColor: '#ffffff',
   textOpacity: 0.42,
   fontSizePx: 34,
   fontFamily: 'Segoe UI Variable Display',

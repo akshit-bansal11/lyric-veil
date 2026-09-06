@@ -140,18 +140,28 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
           </datalist>
         </Row>
 
-        <Row label="Colour">
+        <Row label="Active colour">
           <input
             type="color"
             value={config.textColor}
             onChange={(e) => set({ textColor: e.target.value })}
-            aria-label="Text colour"
+            aria-label="Colour of the word or line being sung"
+            className={SWATCH}
+          />
+        </Row>
+
+        <Row label="Inactive colour">
+          <input
+            type="color"
+            value={config.inactiveColor}
+            onChange={(e) => set({ inactiveColor: e.target.value })}
+            aria-label="Colour of everything not being sung"
             className={SWATCH}
           />
         </Row>
 
         <Range
-          label="Opacity"
+          label="Inactive opacity"
           aria="Opacity of words that are not being sung"
           value={config.textOpacity}
           min={0.15}
