@@ -1,14 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
-import { type AppConfig, clampOffset } from '@shared/config';
+import {
+  type AppConfig,
+  SPOTIFY_DASHBOARD_URL,
+  SPOTIFY_REDIRECT_URI,
+  clampOffset,
+} from '@shared/config';
 import { IPC } from '@shared/ipc';
 import type { AppStatus, Lyrics, PlaybackAnchor, TrackInfo } from '@shared/types';
-import { type BrowserWindow, type Tray, app, dialog, shell } from 'electron';
+import { type BrowserWindow, type Tray, app, clipboard, dialog, shell } from 'electron';
 import {
   AuthError,
   configureClientId,
   ensureAuthenticated,
   isConfigured,
+  signOut,
 } from './auth/spotify-auth';
 import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { registerIpcHandlers } from './ipc-handlers';
@@ -90,6 +96,15 @@ function applyConfig(patch: Partial<AppConfig>): void {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: !config.hideOnFullscreen });
   }
   if (patch.alwaysOnTop !== undefined) applyZOrder();
+
+  if (patch.spotifyClientId !== undefined && configureClientId(config.spotifyClientId)) {
+    // Tokens are issued against a specific app; a different client ID makes
+    // every stored token useless, so start clean rather than fail on refresh.
+    signOut();
+    lastStatus = null;
+    if (isConfigured()) void startAuth();
+    else pushStatus('unconfigured');
+  }
 }
 
 /**
@@ -143,6 +158,8 @@ function openSettings(): void {
   settingsWin.webContents.once('did-finish-load', () => {
     pushConfig();
     pushBackgroundImage();
+    // The panel opens after the status was last broadcast, so replay it.
+    if (lastStatus) send(IPC.STATUS, lastStatus);
   });
   // Closing the panel, by any route, is how interactive mode ends.
   settingsWin.on('closed', () => {
@@ -272,8 +289,14 @@ function quit(): void {
 }
 
 function bootstrap(): void {
-  // Injected by electron-vite from .env at build time; absent until the user adds one.
-  configureClientId(import.meta.env.MAIN_VITE_SPOTIFY_CLIENT_ID);
+  // The user's own client ID, from settings. A packaged build deliberately
+  // ignores the build-time value: it belongs to whoever built the binary, and
+  // Spotify only lets accounts on that app's allowlist sign in, so shipping it
+  // would make the release useless to everyone else. In development the .env
+  // value is still honoured as a convenience.
+  configureClientId(
+    config.spotifyClientId || (app.isPackaged ? '' : import.meta.env.MAIN_VITE_SPOTIFY_CLIENT_ID),
+  );
 
   win = createOverlayWindow(config, visible);
   win.on('moved', syncBoundsFromWindow);
@@ -286,6 +309,11 @@ function bootstrap(): void {
     setConfig: applyConfig,
     pickBackgroundImage,
     clearBackgroundImage,
+    copyRedirectUri: () => {
+      clipboard.writeText(SPOTIFY_REDIRECT_URI);
+      send(IPC.TOAST, 'Redirect URI copied');
+    },
+    openDashboard: () => void shell.openExternal(SPOTIFY_DASHBOARD_URL),
     startAuth: () => void startAuth(),
     quit,
   });
@@ -319,8 +347,14 @@ function bootstrap(): void {
 
   // Silent refresh on launch; only falls through to a browser when there is no
   // usable refresh token, which is the one case that genuinely needs the user.
-  if (isConfigured()) void startAuth();
-  else pushStatus('unconfigured');
+  if (isConfigured()) {
+    void startAuth();
+  } else {
+    pushStatus('unconfigured');
+    // Nothing can work without a client ID, and a transparent overlay is a poor
+    // place to hunt for a hotkey, so open the panel that asks for one.
+    setInteractiveMode(true);
+  }
 
   log.info('overlay started');
 }

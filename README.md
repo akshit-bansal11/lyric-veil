@@ -20,14 +20,6 @@ A frameless, fully transparent, click-through overlay that shows the lyrics of w
 
 Windows 10 (1809+) and Windows 11.
 
-## Read this before you download
-
-**The published `.exe` is tied to my own Spotify application.** The client ID is compiled in at build time, and Spotify keeps new applications in *development mode*, where only accounts the developer has explicitly added are allowed to sign in.
-
-So unless I have added your Spotify account, **the download will install and run but sign-in will fail.** That is a limitation of how Spotify gates new apps, not a bug.
-
-If you are not on that list, [build from source](#build-from-source) with your own client ID. It is free, takes about two minutes, and the app is identical.
-
 ## What it does
 
 - **Word-by-word highlight.** The current word is lit; the rest of the line is dimmed. It is a discrete step, not a gradient sweep, so it reads as *this word*.
@@ -39,8 +31,6 @@ If you are not on that list, [build from source](#build-from-source) with your o
 
 ## Install
 
-### Download
-
 Grab the latest [release](https://github.com/akshit-bansal11/lyric-veil/releases/latest):
 
 | File | Use it if |
@@ -50,44 +40,29 @@ Grab the latest [release](https://github.com/akshit-bansal11/lyric-veil/releases
 
 The binaries are **unsigned**, so SmartScreen will warn on first launch — *More info → Run anyway*. Signing requires a certificate this project does not have.
 
-Then read [the note above](#read-this-before-you-download) about sign-in.
+## First run
 
-### Build from source
+Lyric Veil asks for **your own Spotify client ID** the first time it starts, and walks you through getting one: the settings window opens by itself with the field, the redirect URI ready to copy, and a button straight to the Spotify dashboard. It is free and takes about two minutes.
 
-Requires [Node.js 24+](https://nodejs.org) and a free Spotify client ID.
-
-```bash
-git clone https://github.com/akshit-bansal11/lyric-veil
-cd lyric-veil
-npm install
-cp .env.example .env    # paste your client ID into it
-npm run dev
-```
+It works this way deliberately. A client ID compiled into a public download belongs to whoever built it, and Spotify keeps new applications in **development mode**, where only accounts on that application's own allowlist may sign in — so a baked-in ID would make the release unusable for everybody else. Yours stays on your machine and can be changed at any time from the settings panel.
 
 <details>
-<summary><b>Getting a Spotify client ID</b> (free, no secret required)</summary>
+<summary><b>Getting a Spotify client ID</b> — free, no client secret, about two minutes</summary>
 
-1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and create an app.
-2. Add this redirect URI **exactly**:
+1. Open the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and click **Create app**. Any name and description will do.
+2. Add this redirect URI **exactly** (the settings panel has a Copy button for it):
 
    ```
    http://127.0.0.1:8888/callback
    ```
 
    It must be `127.0.0.1`, not `localhost` — Spotify rejects `localhost` for new redirect URIs — over `http`, on port `8888`, with the `/callback` path.
-3. Under **APIs used**, tick **Web API** only.
-4. Copy the **Client ID** from the app's settings into `.env` as `MAIN_VITE_SPOTIFY_CLIENT_ID`.
+3. Under **Which API/SDKs are you planning to use?**, tick **Web API** only.
+4. Save, open the app's **Settings**, and copy the **Client ID** — 32 letters and digits.
+5. Paste it into Lyric Veil and press **Save and connect**. A browser tab opens once for you to authorise; after that it reconnects silently.
 
-There is no client secret. Authentication is Authorization Code with PKCE against a loopback redirect, so nothing secret is ever shipped. The only scopes requested are `user-read-playback-state` and `user-read-currently-playing` — both read-only. Lyric Veil cannot control your playback.
-
-The ID is injected at **build** time, so restart `npm run dev` after editing `.env`.
+There is no client secret. Authentication is Authorization Code with PKCE against a loopback redirect, so nothing secret is ever stored or shipped. The only scopes requested are `user-read-playback-state` and `user-read-currently-playing` — both read-only. **Lyric Veil cannot control your playback.**
 </details>
-
-To produce your own installers:
-
-```bash
-npm run package    # → dist/LyricVeil-<version>-portable.exe and -setup.exe
-```
 
 ## Controls
 
@@ -125,7 +100,24 @@ No single anchor is trusted. The errors of the last five are kept and only their
 
 **Word timings are usually synthesized.** LRCLIB serves line-level LRC, so each line's duration is split across its words: every word first gets a 90 ms floor, and only the surplus is distributed by character weight. Weighting first and clamping afterwards overruns the line end on any line mixing very long and very short words. Enhanced LRC (`<mm:ss.xx>` markers) is parsed and used directly when a source provides it.
 
-## Project layout
+## Development
+
+```bash
+git clone https://github.com/akshit-bansal11/lyric-veil
+cd lyric-veil
+npm install
+npm run dev
+```
+
+Requires [Node.js 24+](https://nodejs.org). Enter your client ID in the settings panel as above, or — for development only — copy `.env.example` to `.env` and put it there to skip the setup screen on every restart. Packaged builds deliberately ignore that value.
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Run with hot reload |
+| `npm run check` | Quality gate: format, lint, typecheck, test |
+| `npm test` | Tests only |
+| `npm run build` | Typecheck and build all three bundles |
+| `npm run package` | Build, then produce the installers in `dist/` |
 
 ```
 src/
@@ -140,14 +132,6 @@ site/         the microsite (static, no build step)
 tests/        vitest — no DOM required
 ```
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Run with hot reload |
-| `npm run check` | Quality gate: format, lint, typecheck, test |
-| `npm test` | Tests only |
-| `npm run build` | Typecheck and build all three bundles |
-| `npm run package` | Build, then produce the installers in `dist/` |
-
 Config and logs live in `%APPDATA%\lyric-veil\`. Delete that folder for a clean slate.
 
 ## Limitations
@@ -157,7 +141,7 @@ Config and logs live in `%APPDATA%\lyric-veil\`. Delete that folder for a clean 
 - **Lyrics can be wrong or missing.** LRCLIB matches on title, artist, album and duration; a different master of the same song can resolve to timings that are seconds out. The sync offset is the mitigation.
 - **Podcasts and local files** have no Spotify track ID, so no lookup is attempted.
 - **A free Spotify account works**, but there must be an active device — otherwise the API returns 204 and the overlay shows *Nothing playing*.
-- **The binaries are unsigned**, and the released build is tied to my Spotify app (see [above](#read-this-before-you-download)).
+- **The binaries are unsigned**, so SmartScreen warns once on first launch.
 
 ## Licence
 

@@ -469,6 +469,36 @@ pre .c {
   border-radius: 50%;
   background: var(--ink-3);
 }
+
+/* An ordered list is a real sequence, so it gets numbers rather than dots. */
+ol.notes {
+  counter-reset: step;
+}
+ol.notes li {
+  counter-increment: step;
+  padding-left: 1.6rem;
+}
+ol.notes li::before {
+  content: counter(step);
+  top: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #101014;
+  color: var(--ink);
+}
 .notes b {
   color: var(--ink);
   font-weight: 600;

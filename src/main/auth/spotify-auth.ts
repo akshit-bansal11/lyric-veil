@@ -1,4 +1,5 @@
 import { type Server, createServer } from 'node:http';
+import { SPOTIFY_REDIRECT_PORT, SPOTIFY_REDIRECT_URI } from '@shared/config';
 import { shell } from 'electron';
 import { createLogger } from '../lib/logger';
 import {
@@ -12,9 +13,8 @@ import { createPkcePair, createState } from './pkce';
 
 const log = createLogger('auth');
 
-const REDIRECT_PORT = 8888;
-/** 127.0.0.1, not localhost -- Spotify rejects localhost for new redirect URIs. */
-export const REDIRECT_URI = `http://127.0.0.1:${REDIRECT_PORT}/callback`;
+const REDIRECT_PORT = SPOTIFY_REDIRECT_PORT;
+export const REDIRECT_URI = SPOTIFY_REDIRECT_URI;
 const SCOPES = 'user-read-playback-state user-read-currently-playing';
 /** Refresh this far ahead of expiry so a request never races the deadline. */
 const REFRESH_MARGIN_MS = 60_000;
@@ -29,11 +29,19 @@ const CLOSE_PAGE = [
 
 export class AuthError extends Error {}
 
-/** Set at startup from the build-time env. Null means the app was never configured. */
+/** The client ID in use. Null means the user has not provided one yet. */
 let clientId: string | null = null;
 
-export function configureClientId(id: string | undefined): void {
-  clientId = id && id.trim().length > 0 ? id.trim() : null;
+/** Returns true when the value actually changed, so the caller can re-authenticate. */
+export function configureClientId(id: string | undefined): boolean {
+  const next = id && id.trim().length > 0 ? id.trim() : null;
+  if (next === clientId) return false;
+  clientId = next;
+  return true;
+}
+
+export function getClientId(): string | null {
+  return clientId;
 }
 
 export function isConfigured(): boolean {

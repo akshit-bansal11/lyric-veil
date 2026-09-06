@@ -7,6 +7,8 @@ export interface IpcActions {
   setConfig: (patch: Partial<AppConfig>) => void;
   pickBackgroundImage: () => Promise<boolean>;
   clearBackgroundImage: () => void;
+  copyRedirectUri: () => void;
+  openDashboard: () => void;
   startAuth: () => void;
   quit: () => void;
 }
@@ -47,6 +49,10 @@ export function registerIpcHandlers(actions: IpcActions): void {
 
   ipcMain.handle(IPC.PICK_BG_IMAGE, () => actions.pickBackgroundImage());
   ipcMain.on(IPC.CLEAR_BG_IMAGE, () => actions.clearBackgroundImage());
+  // Both take no argument on purpose: the URI and the URL are fixed constants,
+  // so the renderer can never ask main to copy or open something of its choosing.
+  ipcMain.on(IPC.COPY_REDIRECT_URI, () => actions.copyRedirectUri());
+  ipcMain.on(IPC.OPEN_DASHBOARD, () => actions.openDashboard());
   ipcMain.on(IPC.START_AUTH, () => actions.startAuth());
   ipcMain.on(IPC.QUIT, () => actions.quit());
 }

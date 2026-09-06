@@ -33,6 +33,8 @@ const bridge: LyricVeilBridge = {
     return result === true;
   },
   clearBackgroundImage: () => ipcRenderer.send(IPC.CLEAR_BG_IMAGE),
+  copyRedirectUri: () => ipcRenderer.send(IPC.COPY_REDIRECT_URI),
+  openDashboard: () => ipcRenderer.send(IPC.OPEN_DASHBOARD),
   startAuth: () => ipcRenderer.send(IPC.START_AUTH),
   quit: () => ipcRenderer.send(IPC.QUIT),
 };

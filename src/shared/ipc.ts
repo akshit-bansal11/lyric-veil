@@ -17,6 +17,8 @@ export const IPC = {
   SET_CONFIG: 'config:set',
   PICK_BG_IMAGE: 'config:pick-bg-image',
   CLEAR_BG_IMAGE: 'config:clear-bg-image',
+  COPY_REDIRECT_URI: 'auth:copy-redirect-uri',
+  OPEN_DASHBOARD: 'auth:open-dashboard',
   START_AUTH: 'auth:start',
   QUIT: 'app:quit',
 } as const;
@@ -36,6 +38,9 @@ export interface LyricVeilBridge {
   /** Opens a native file picker. Resolves true when an image was chosen and applied. */
   pickBackgroundImage: () => Promise<boolean>;
   clearBackgroundImage: () => void;
+  /** Puts the loopback redirect URI on the clipboard, for pasting into Spotify. */
+  copyRedirectUri: () => void;
+  openDashboard: () => void;
   startAuth: () => void;
   quit: () => void;
 }

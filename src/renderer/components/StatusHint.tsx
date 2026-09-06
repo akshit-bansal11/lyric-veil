@@ -18,8 +18,8 @@ function hintFor(status: AppStatus, track: TrackInfo | null): Hint | null {
   switch (status) {
     case 'unconfigured':
       return {
-        title: 'No Spotify client ID',
-        detail: 'Add MAIN_VITE_SPOTIFY_CLIENT_ID to .env and restart.',
+        title: 'Add your Spotify client ID',
+        detail: 'The settings window is open — paste one in to begin. Ctrl+Alt+L reopens it.',
       };
     case 'unauthenticated':
       return {

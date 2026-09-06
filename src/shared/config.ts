@@ -7,7 +7,28 @@ export type TextAlign = 'left' | 'center' | 'right';
  */
 export type HighlightMode = 'word' | 'line';
 
+/** 127.0.0.1, not localhost -- Spotify rejects localhost for new redirect URIs. */
+export const SPOTIFY_REDIRECT_PORT = 8888;
+export const SPOTIFY_REDIRECT_URI = `http://127.0.0.1:${SPOTIFY_REDIRECT_PORT}/callback`;
+export const SPOTIFY_DASHBOARD_URL = 'https://developer.spotify.com/dashboard';
+
+/** Spotify client IDs are 32 alphanumeric characters. */
+export function isValidClientId(value: string): boolean {
+  return /^[0-9a-zA-Z]{32}$/.test(value.trim());
+}
+
 export interface AppConfig {
+  /**
+   * The user's own Spotify client ID. Empty until they provide one.
+   *
+   * Deliberately a setting rather than a build-time constant: a client ID
+   * compiled into a public binary belongs to whoever built it, and Spotify
+   * keeps new apps in development mode where only accounts on that app's
+   * allowlist may sign in. Baking one in makes the release unusable for
+   * everyone else.
+   */
+  spotifyClientId: string;
+
   /** User-tunable sync nudge, ms. Positive = lyrics appear earlier. */
   offsetMs: number;
   highlightMode: HighlightMode;
@@ -54,6 +75,7 @@ export const OFFSET_MIN_MS = -3000;
 export const OFFSET_MAX_MS = 3000;
 
 export const DEFAULT_CONFIG: AppConfig = {
+  spotifyClientId: '',
   offsetMs: 0,
   highlightMode: 'word',
   alwaysOnTop: true,

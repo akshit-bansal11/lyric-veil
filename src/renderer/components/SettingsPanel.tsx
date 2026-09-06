@@ -5,12 +5,132 @@ import {
   type HighlightMode,
   OFFSET_MAX_MS,
   OFFSET_MIN_MS,
+  SPOTIFY_REDIRECT_URI,
   type TextAlign,
+  isValidClientId,
 } from '@shared/config';
+import type { AppStatus } from '@shared/types';
+import { useEffect, useState } from 'react';
 
 export interface SettingsPanelProps {
   config: AppConfig;
+  status?: AppStatus;
   className?: string;
+}
+
+/**
+ * First-run setup. The client ID is the user's own: nothing works without it,
+ * and it cannot be shipped in the binary, so this is the first thing the panel
+ * asks for and the first thing it shows the state of.
+ */
+function SpotifySection({ config, status }: { config: AppConfig; status?: AppStatus }) {
+  const [draft, setDraft] = useState(config.spotifyClientId);
+  // Re-sync if the value changes elsewhere (a reset, or another window).
+  useEffect(() => setDraft(config.spotifyClientId), [config.spotifyClientId]);
+
+  const trimmed = draft.trim();
+  const valid = isValidClientId(trimmed);
+  const dirty = trimmed !== config.spotifyClientId;
+  const connected =
+    status !== 'unconfigured' && status !== 'unauthenticated' && Boolean(config.spotifyClientId);
+
+  const save = (): void => {
+    if (!valid) return;
+    set({ spotifyClientId: trimmed });
+    window.lyricVeil.startAuth();
+  };
+
+  return (
+    <>
+      <Section title="Spotify" />
+
+      <p className="m-0 flex items-center gap-1.5 text-white/70">
+        <span
+          className={cn(
+            'inline-block h-1.5 w-1.5 shrink-0 rounded-full',
+            connected ? 'bg-emerald-400' : 'bg-amber-400',
+          )}
+        />
+        {connected
+          ? 'Connected'
+          : config.spotifyClientId
+            ? 'Not signed in yet'
+            : 'Needs your Spotify client ID'}
+      </p>
+
+      {!config.spotifyClientId ? (
+        <ol className="m-0 flex list-decimal flex-col gap-1 pl-4 text-[11px] text-white/45 leading-snug">
+          <li>Create a free app on the Spotify developer dashboard.</li>
+          <li>Add the redirect URI below to it, and tick Web API.</li>
+          <li>Paste its Client ID here.</li>
+        </ol>
+      ) : null}
+
+      <label className="flex flex-col gap-1">
+        <span className="text-white/60">Client ID</span>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save();
+          }}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder="32 characters from your Spotify app"
+          aria-label="Spotify client ID"
+          className={cn(
+            'w-full rounded border bg-black/60 px-1.5 py-1 font-mono text-[11px] tracking-tight',
+            trimmed.length === 0 || valid ? 'border-white/20' : 'border-red-500/60',
+          )}
+        />
+      </label>
+      {trimmed.length > 0 && !valid ? (
+        <p className="m-0 text-[10px] text-red-400/80 leading-tight">
+          A client ID is 32 letters and digits &mdash; that is {trimmed.length}.
+        </p>
+      ) : null}
+
+      <label className="flex flex-col gap-1">
+        <span className="text-white/60">Redirect URI &mdash; add this to your app</span>
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={SPOTIFY_REDIRECT_URI}
+            readOnly
+            aria-label="Redirect URI to add to your Spotify app"
+            className="w-full rounded border border-white/20 bg-black/60 px-1.5 py-1 font-mono text-[11px] text-white/70"
+          />
+          <button
+            type="button"
+            onClick={() => window.lyricVeil.copyRedirectUri()}
+            className={cn(BUTTON, 'shrink-0')}
+          >
+            Copy
+          </button>
+        </div>
+      </label>
+
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => window.lyricVeil.openDashboard()} className={BUTTON}>
+          Open dashboard
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!valid || (!dirty && connected)}
+          className={cn(
+            BUTTON,
+            valid && (dirty || !connected)
+              ? 'border-white/40 bg-white/10'
+              : 'cursor-not-allowed opacity-40',
+          )}
+        >
+          {connected && !dirty ? 'Reconnect' : 'Save and connect'}
+        </button>
+      </div>
+    </>
+  );
 }
 
 const set = (patch: Partial<AppConfig>): void => window.lyricVeil.setConfig(patch);
@@ -109,7 +229,7 @@ const percent = (v: number): string => `${Math.round(v * 100)}%`;
 const signedMs = (v: number): string => `${v > 0 ? '+' : ''}${v} ms`;
 
 /** Only rendered in interactive mode. */
-export function SettingsPanel({ config, className }: SettingsPanelProps) {
+export function SettingsPanel({ config, status, className }: SettingsPanelProps) {
   return (
     <div
       className={cn(
@@ -126,6 +246,8 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
       }}
     >
       <div className="flex flex-col gap-2">
+        <SpotifySection config={config} status={status} />
+
         <Section title="Text" />
 
         <Row label="Font">

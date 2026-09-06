@@ -81,7 +81,7 @@
       <div class="specs">
         <span><b>Free</b> and MIT-licensed</span>
         <span><b>75 MB</b> portable .exe</span>
-        <span><b>No account</b> beyond your own Spotify</span>
+        <span><b>Your own</b> Spotify client ID, set up in-app</span>
         <span><b>Read-only</b> Spotify scopes</span>
         <span>Lyrics from <b>LRCLIB</b></span>
       </div>
@@ -212,27 +212,34 @@
       <section>
         <div class="cols">
           <div>
-            <h2>Run it from source</h2>
+            <h2>Setting up takes two minutes</h2>
             <p class="body" style="margin-bottom: 1.25rem">
-              Node 24 and a Spotify client ID. There is no client secret &mdash; authentication is
-              PKCE against a loopback redirect.
+              On first run the settings window opens and asks for your own Spotify client ID. It
+              is free, and there is no client secret &mdash; authentication is PKCE against a
+              loopback redirect, with read-only scopes.
             </p>
-            <pre><span class="c"># add http://127.0.0.1:8888/callback as a redirect URI</span>
-git clone https://github.com/akshit-bansal11/lyric-veil
-cd lyric-veil
-npm install
-cp .env.example .env   <span class="c"># paste your client ID</span>
-npm run dev</pre>
+            <ol class="notes" style="counter-reset: step">
+              <li>
+                Create a free app on the
+                <a href="https://developer.spotify.com/dashboard">Spotify dashboard</a>.
+              </li>
+              <li>
+                Add <code>http://127.0.0.1:8888/callback</code> as a redirect URI, and tick
+                <b>Web API</b>.
+              </li>
+              <li>Paste the Client ID into Lyric Veil and press <b>Save and connect</b>.</li>
+            </ol>
           </div>
           <div>
             <h2>Worth knowing first</h2>
             <ul class="notes" style="margin-top: 1.25rem">
               <li>
-                <b>The download is tied to my Spotify app.</b> The client ID is baked in at build
-                time, and Spotify keeps new apps in development mode, where only accounts the
-                developer has added can sign in. Unless yours is one of them, sign-in will fail
-                &mdash; build from source with your own client ID instead. It takes about two
-                minutes and it is free.
+                <b>You bring your own Spotify client ID.</b> Lyric Veil asks for one on first run
+                and walks you through it &mdash; the settings window opens by itself with the
+                field, the redirect URI ready to copy and a button to the dashboard. Free, about
+                two minutes. It works this way because a client ID baked into a public download
+                belongs to whoever built it, and Spotify only lets accounts on that app&rsquo;s
+                allowlist sign in.
               </li>
               <li>
                 <b>Word timing is usually estimated.</b> LRCLIB carries line-level timing; the
