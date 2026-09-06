@@ -22,6 +22,7 @@ import {
 import { evictOverflow, resolveLyrics } from './services/lyrics-service';
 import { type Poller, startPoller } from './services/playback-poller';
 import { readConfig, writeConfig } from './services/store';
+import { createSettingsWindow, dockSettingsWindow } from './settings-window';
 import { createTray } from './tray';
 
 const log = createLogger('main');
@@ -37,6 +38,8 @@ const IMAGE_MIME: Record<string, string> = {
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
 let win: BrowserWindow | null = null;
+/** The docked settings panel; exists only while interactive mode is on. */
+let settingsWin: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let poller: Poller | null = null;
 let config: AppConfig = readConfig();
@@ -49,8 +52,11 @@ let lyricsRequestId = 0;
 /** The background image bytes, kept out of the persisted config. */
 let bgImageDataUrl: string | null = null;
 
+/** Both windows subscribe to the same channels; the settings panel needs config and images too. */
 function send(channel: string, payload?: unknown): void {
-  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+  for (const target of [win, settingsWin]) {
+    if (target && !target.isDestroyed()) target.webContents.send(channel, payload);
+  }
 }
 
 function pushStatus(status: AppStatus): void {
@@ -108,6 +114,8 @@ function syncBoundsFromWindow(): void {
     next.height !== config.height;
   // A programmatic setBounds also fires these events; only a real change is recorded.
   if (changed) commitConfig(next);
+  // The panel follows the overlay wherever it goes.
+  if (settingsWin) dockSettingsWindow(settingsWin, win);
 }
 
 function adjustOffset(deltaMs: number): void {
@@ -122,12 +130,45 @@ function resetOffset(): void {
   send(IPC.TOAST, 'Sync offset reset');
 }
 
-function toggleInteractive(): void {
+function openSettings(): void {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.focus();
+    return;
+  }
   if (!win) return;
-  interactive = !interactive;
-  send(IPC.INTERACTIVE_MODE, interactive);
+  const overlay = win;
+
+  settingsWin = createSettingsWindow();
+  dockSettingsWindow(settingsWin, overlay);
+  settingsWin.webContents.once('did-finish-load', () => {
+    pushConfig();
+    pushBackgroundImage();
+  });
+  // Closing the panel, by any route, is how interactive mode ends.
+  settingsWin.on('closed', () => {
+    settingsWin = null;
+    setInteractiveMode(false);
+  });
+}
+
+function closeSettings(): void {
+  const panel = settingsWin;
+  settingsWin = null;
+  if (panel && !panel.isDestroyed()) panel.close();
+}
+
+function setInteractiveMode(on: boolean): void {
+  if (!win || interactive === on) return;
+  interactive = on;
+  send(IPC.INTERACTIVE_MODE, on);
   applyZOrder();
-  setInteractive(win, interactive);
+  setInteractive(win, on);
+  if (on) openSettings();
+  else closeSettings();
+}
+
+function toggleInteractive(): void {
+  setInteractiveMode(!interactive);
 }
 
 function toggleVisible(): void {
@@ -159,11 +200,16 @@ function pushBackgroundImage(): void {
 }
 
 async function pickBackgroundImage(): Promise<boolean> {
-  const result = await dialog.showOpenDialog({
+  const options = {
     title: 'Choose a background image',
-    properties: ['openFile'],
+    properties: ['openFile' as const],
     filters: [{ name: 'Images', extensions: Object.keys(IMAGE_MIME) }],
-  });
+  };
+  // Parented to the panel when it exists, so the dialog opens on top of it.
+  const result =
+    settingsWin && !settingsWin.isDestroyed()
+      ? await dialog.showOpenDialog(settingsWin, options)
+      : await dialog.showOpenDialog(options);
   const file = result.filePaths[0];
   if (result.canceled || !file) return false;
 

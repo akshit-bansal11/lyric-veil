@@ -311,8 +311,8 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
         </Row>
         {config.alwaysOnTop ? null : (
           <p className="m-0 text-[10px] text-white/35 leading-tight">
-            Off: sits behind any window you use, like a normal window. Either way it stays put
-            when you press Win+D.
+            Off: sits behind any window you use, like a normal window. Either way it stays put when
+            you press Win+D.
           </p>
         )}
 
@@ -412,7 +412,9 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
           <button type="button" onClick={() => set(DEFAULT_CONFIG)} className={BUTTON}>
             Reset to defaults
           </button>
-          <span className="text-[10px] text-white/35">Ctrl+Alt+L closes this</span>
+          <span className="text-[10px] text-white/35">
+            Ctrl+Alt+L or close this window to finish
+          </span>
         </div>
       </div>
     </div>
