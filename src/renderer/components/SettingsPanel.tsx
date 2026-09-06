@@ -2,6 +2,7 @@ import { cn } from '@renderer/lib/cn';
 import {
   type AppConfig,
   DEFAULT_CONFIG,
+  type HighlightMode,
   OFFSET_MAX_MS,
   OFFSET_MIN_MS,
   type TextAlign,
@@ -18,6 +19,11 @@ const ALIGNMENTS: ReadonlyArray<{ value: TextAlign; label: string }> = [
   { value: 'left', label: 'Left' },
   { value: 'center', label: 'Centre' },
   { value: 'right', label: 'Right' },
+];
+
+const HIGHLIGHTS: ReadonlyArray<{ value: HighlightMode; label: string }> = [
+  { value: 'word', label: 'Word' },
+  { value: 'line', label: 'Line' },
 ];
 
 /** Faces that ship with Windows 10/11. Anything installed can still be typed in. */
@@ -284,6 +290,21 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
           step={1}
           onChange={(v) => set({ linesBelow: v })}
         />
+        <Row label="Stay above other windows">
+          <input
+            type="checkbox"
+            checked={config.alwaysOnTop}
+            onChange={(e) => set({ alwaysOnTop: e.target.checked })}
+            aria-label="Keep the overlay above every other window"
+            className="accent-white"
+          />
+        </Row>
+        {config.alwaysOnTop ? null : (
+          <p className="m-0 text-[10px] text-white/35 leading-tight">
+            Off: it sits on the desktop and any window you use covers it. Ctrl+Alt+H twice brings it
+            back to the front.
+          </p>
+        )}
 
         <Section title="Background" />
 
@@ -334,6 +355,34 @@ export function SettingsPanel({ config, className }: SettingsPanelProps) {
         </Row>
 
         <Section title="Timing" />
+
+        <Row label="Highlight">
+          <fieldset className="m-0 flex overflow-hidden rounded border border-white/20 p-0">
+            <legend className="sr-only">Highlight mode</legend>
+            {HIGHLIGHTS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => set({ highlightMode: option.value })}
+                aria-pressed={config.highlightMode === option.value}
+                className={cn(
+                  'px-2 py-0.5 transition-colors',
+                  config.highlightMode === option.value
+                    ? 'bg-white text-black'
+                    : 'hover:bg-white/10',
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </fieldset>
+        </Row>
+        {config.highlightMode === 'word' ? (
+          <p className="m-0 text-[10px] text-white/35 leading-tight">
+            Word timing is estimated; the source only knows when each line starts. Switch to Line if
+            words land off.
+          </p>
+        ) : null}
 
         <Range
           label="Sync offset"

@@ -53,6 +53,11 @@
     color: rgb(var(--text-rgb) / var(--text-dim));
   }
 
+  /* Line mode: the whole current line at full strength, no per-word state. */
+  .lyric-line[data-active="true"][data-highlight="line"] {
+    color: rgb(var(--text-rgb) / 1);
+  }
+
   /* The word being sung. A discrete step, not a sweep: the whole point is that
      it reads as "this word", so there is nothing in between to animate. */
   .lyric-word {

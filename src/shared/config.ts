@@ -1,8 +1,18 @@
 export type TextAlign = 'left' | 'center' | 'right';
 
+/**
+ * 'word' lights the word being sung; 'line' lights the whole current line.
+ * LRCLIB only carries line timing, so word timing is synthesized -- 'line' is
+ * the mode that is actually exact for this source.
+ */
+export type HighlightMode = 'word' | 'line';
+
 export interface AppConfig {
   /** User-tunable sync nudge, ms. Positive = lyrics appear earlier. */
   offsetMs: number;
+  highlightMode: HighlightMode;
+  /** Float above every other window, or sit in the normal stack and be covered by them. */
+  alwaysOnTop: boolean;
 
   textColor: string;
   /** Strength of every word that is not the one being sung. This is "the gray". */
@@ -42,6 +52,8 @@ export const OFFSET_MAX_MS = 3000;
 
 export const DEFAULT_CONFIG: AppConfig = {
   offsetMs: 0,
+  highlightMode: 'word',
+  alwaysOnTop: true,
 
   textColor: '#ffffff',
   textOpacity: 0.42,

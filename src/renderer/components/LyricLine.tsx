@@ -5,28 +5,34 @@ import type { LyricLine as LyricLineModel } from '@shared/types';
 import { useEffect, useRef } from 'react';
 import { LyricWord } from './LyricWord';
 
+/**
+ * How the active line is lit. 'none' is for plain lyrics whose timings are
+ * invented: they get the dim treatment and never a highlight.
+ */
+export type LineHighlight = 'word' | 'line' | 'none';
+
 export interface LyricLineProps {
   line: LyricLineModel;
   isActive: boolean;
   clock: ClockRef;
-  /** False for plain lyrics, whose timings are invented. No word is ever "current". */
-  animated: boolean;
+  highlight: LineHighlight;
   className?: string;
 }
 
 /**
  * A single lyric line.
  *
- * Only the active line is split into per-word spans. Every other line renders as
- * one element holding the whole text: on a sixty-word chorus that is the
- * difference between eight DOM nodes and four hundred, and nothing offscreen
- * has a loop running.
+ * Only the active line in word mode is split into per-word spans. Every other
+ * case renders as one element holding the whole text: on a sixty-word chorus
+ * that is the difference between eight DOM nodes and four hundred, and nothing
+ * offscreen has a loop running.
  */
-export function LyricLine({ line, isActive, clock, animated, className }: LyricLineProps) {
+export function LyricLine({ line, isActive, clock, highlight, className }: LyricLineProps) {
   const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const perWord = isActive && highlight === 'word';
 
   useEffect(() => {
-    if (!isActive || !animated) return;
+    if (!perWord) return;
 
     let raf = 0;
     let current = -1;
@@ -53,11 +59,15 @@ export function LyricLine({ line, isActive, clock, animated, className }: LyricL
       cancelAnimationFrame(raf);
       if (current >= 0) mark(current, false);
     };
-  }, [isActive, animated, line.words, clock]);
+  }, [perWord, line.words, clock]);
 
-  if (!isActive) {
+  if (!perWord) {
     return (
-      <p className={cn('lyric-line py-[0.14em]', className)} data-active="false">
+      <p
+        className={cn('lyric-line py-[0.14em]', className)}
+        data-active={isActive ? 'true' : 'false'}
+        data-highlight={isActive ? highlight : undefined}
+      >
         {line.text}
       </p>
     );

@@ -83,6 +83,12 @@ function applyConfig(patch: Partial<AppConfig>): void {
   if (patch.hideOnFullscreen !== undefined && win) {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: !config.hideOnFullscreen });
   }
+  if (patch.alwaysOnTop !== undefined && win) {
+    // Off drops the window into the normal stack: it stays put, and any window
+    // the user touches afterwards covers it. Windows has no "pin to wallpaper"
+    // level short of re-parenting under the desktop, which is not worth it.
+    win.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
+  }
 }
 
 /** The user dragged or resized the window: record where it ended up. */

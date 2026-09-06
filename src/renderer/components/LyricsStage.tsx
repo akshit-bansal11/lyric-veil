@@ -5,7 +5,7 @@ import type { AppConfig } from '@shared/config';
 import { INTERLUDE_THRESHOLD_MS, type Lyrics } from '@shared/types';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { InterludeDots } from './InterludeDots';
-import { LyricLine } from './LyricLine';
+import { type LineHighlight, LyricLine } from './LyricLine';
 
 export interface LyricsStageProps {
   lyrics: Lyrics;
@@ -43,8 +43,9 @@ export function LyricsStage({ lyrics, active, clock, config, className }: Lyrics
   const last = Math.min(lyrics.lines.length, Math.max(active.index, 0) + config.linesBelow + 1);
   const window = lyrics.lines.slice(first, last);
 
-  // Plain lyrics carry invented timings, so no word is ever highlighted on them.
-  const animated = lyrics.syncLevel !== 'plain';
+  // Plain lyrics carry invented timings, so nothing is ever highlighted on them.
+  const highlight: LineHighlight =
+    lyrics.syncLevel === 'plain' ? 'none' : config.highlightMode === 'line' ? 'line' : 'word';
 
   const activeLine = lyrics.lines[active.index];
   const nextLine = lyrics.lines[active.index + 1];
@@ -68,7 +69,7 @@ export function LyricsStage({ lyrics, active, clock, config, className }: Lyrics
                 line={line}
                 isActive={index === active.index && !active.inGap}
                 clock={clock}
-                animated={animated}
+                highlight={highlight}
               />
               {showInterlude && index === active.index ? (
                 <InterludeDots startMs={line.endMs} endMs={nextLine.startMs} clock={clock} />

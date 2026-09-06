@@ -48,7 +48,7 @@ export function createOverlayWindow(config: AppConfig, showOnReady: boolean): Br
     hasShadow: false,
     backgroundColor: '#00000000',
 
-    alwaysOnTop: true,
+    alwaysOnTop: config.alwaysOnTop,
     skipTaskbar: true,
     // Keeps the overlay out of Alt-Tab and stops it stealing focus from games.
     focusable: false,
@@ -72,7 +72,7 @@ export function createOverlayWindow(config: AppConfig, showOnReady: boolean): Br
   });
 
   // Plain alwaysOnTop loses to some fullscreen apps; the screen-saver level does not.
-  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
   // forward:true still delivers mousemove to the renderer while clicks pass through.
   win.setIgnoreMouseEvents(true, { forward: true });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: !config.hideOnFullscreen });
