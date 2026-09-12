@@ -4,6 +4,7 @@ import {
   useConfig,
   useInteractiveMode,
   useLyrics,
+  useReady,
   useStatus,
   useToast,
   useTrack,
@@ -30,6 +31,7 @@ export function App() {
   const interactive = useInteractiveMode();
   const toast = useToast();
   const backgroundImage = useBackgroundImage();
+  useReady();
 
   const clock = usePlaybackClock(config.offsetMs);
   const active = useActiveLine(lyrics?.lines ?? EMPTY_LINES, clock);

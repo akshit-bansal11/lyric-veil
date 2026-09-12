@@ -1,4 +1,4 @@
-import { useConfig, useStatus } from '@renderer/hooks/useLyrics';
+import { useConfig, useReady, useStatus } from '@renderer/hooks/useLyrics';
 import { SettingsPanel } from './components/SettingsPanel';
 
 /**
@@ -9,6 +9,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 export function SettingsApp() {
   const config = useConfig();
   const status = useStatus();
+  useReady();
   return (
     <div className="h-full w-full bg-[#0b0b0c] text-white">
       <SettingsPanel

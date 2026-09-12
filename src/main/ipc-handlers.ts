@@ -1,8 +1,9 @@
 import { type AppConfig, DEFAULT_CONFIG } from '@shared/config';
 import { IPC } from '@shared/ipc';
-import { ipcMain } from 'electron';
+import { type WebContents, ipcMain } from 'electron';
 
 export interface IpcActions {
+  rendererReady: (target: WebContents) => void;
   adjustOffset: (deltaMs: number) => void;
   setConfig: (patch: Partial<AppConfig>) => void;
   pickBackgroundImage: () => Promise<boolean>;
@@ -38,6 +39,7 @@ function sanitizeConfigPatch(input: unknown): Partial<AppConfig> {
 
 /** Renderer-to-main channels. Every payload is re-validated here rather than trusted. */
 export function registerIpcHandlers(actions: IpcActions): void {
+  ipcMain.on(IPC.RENDERER_READY, (event) => actions.rendererReady(event.sender));
   ipcMain.on(IPC.ADJUST_OFFSET, (_event, deltaMs: unknown) => {
     if (typeof deltaMs === 'number' && Number.isFinite(deltaMs)) actions.adjustOffset(deltaMs);
   });

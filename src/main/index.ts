@@ -8,7 +8,15 @@ import {
 } from '@shared/config';
 import { IPC } from '@shared/ipc';
 import type { AppStatus, Lyrics, PlaybackAnchor, TrackInfo } from '@shared/types';
-import { type BrowserWindow, type Tray, app, clipboard, dialog, shell } from 'electron';
+import {
+  type BrowserWindow,
+  type Tray,
+  type WebContents,
+  app,
+  clipboard,
+  dialog,
+  shell,
+} from 'electron';
 import {
   AuthError,
   configureClientId,
@@ -69,6 +77,19 @@ function pushStatus(status: AppStatus): void {
   if (status === lastStatus) return;
   lastStatus = status;
   send(IPC.STATUS, status);
+}
+
+/**
+ * Replay the current state to one window, on its request. Pushing on
+ * did-finish-load was a race: the page's load event can fire before React has
+ * mounted and subscribed, so the overlay sat on defaults until the settings
+ * window opened and its broadcast happened to reach both windows.
+ */
+function rendererReady(target: WebContents): void {
+  if (target.isDestroyed()) return;
+  target.send(IPC.CONFIG_UPDATED, config);
+  target.send(IPC.BG_IMAGE, bgImageDataUrl);
+  if (lastStatus) target.send(IPC.STATUS, lastStatus);
 }
 
 function pushConfig(): void {
@@ -155,12 +176,6 @@ function openSettings(): void {
 
   settingsWin = createSettingsWindow();
   dockSettingsWindow(settingsWin, overlay);
-  settingsWin.webContents.once('did-finish-load', () => {
-    pushConfig();
-    pushBackgroundImage();
-    // The panel opens after the status was last broadcast, so replay it.
-    if (lastStatus) send(IPC.STATUS, lastStatus);
-  });
   // Closing the panel, by any route, is how interactive mode ends.
   settingsWin.on('closed', () => {
     settingsWin = null;
@@ -305,6 +320,7 @@ function bootstrap(): void {
   bgImageDataUrl = loadBackgroundImage(config.bgImagePath);
 
   registerIpcHandlers({
+    rendererReady,
     adjustOffset,
     setConfig: applyConfig,
     pickBackgroundImage,
@@ -337,12 +353,6 @@ function bootstrap(): void {
     onAnchor: (anchor: PlaybackAnchor) => send(IPC.PLAYBACK_ANCHOR, anchor),
     onStatus: pushStatus,
     onTrackChange: (track) => void onTrackChange(track),
-  });
-
-  win.webContents.once('did-finish-load', () => {
-    pushConfig();
-    pushBackgroundImage();
-    if (lastStatus) send(IPC.STATUS, lastStatus);
   });
 
   // Silent refresh on launch; only falls through to a browser when there is no

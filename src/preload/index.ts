@@ -26,6 +26,7 @@ const bridge: LyricVeilBridge = {
   onToast: (cb) => subscribe<string>(IPC.TOAST, cb),
   onBackgroundImage: (cb) => subscribe<string | null>(IPC.BG_IMAGE, cb),
 
+  ready: () => ipcRenderer.send(IPC.RENDERER_READY),
   adjustOffset: (deltaMs) => ipcRenderer.send(IPC.ADJUST_OFFSET, deltaMs),
   setConfig: (patch) => ipcRenderer.send(IPC.SET_CONFIG, patch),
   pickBackgroundImage: async () => {

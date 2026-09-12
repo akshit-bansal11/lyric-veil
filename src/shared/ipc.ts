@@ -13,6 +13,8 @@ export const IPC = {
   BG_IMAGE: 'config:bg-image',
 
   // renderer -> main
+  /** Sent once the renderer has subscribed; main replays config, image and status to that window. */
+  RENDERER_READY: 'app:renderer-ready',
   ADJUST_OFFSET: 'config:adjust-offset',
   SET_CONFIG: 'config:set',
   PICK_BG_IMAGE: 'config:pick-bg-image',
@@ -33,6 +35,8 @@ export interface LyricVeilBridge {
   onInteractiveMode: (cb: (interactive: boolean) => void) => Unsubscribe;
   onToast: (cb: (message: string) => void) => Unsubscribe;
   onBackgroundImage: (cb: (dataUrl: string | null) => void) => Unsubscribe;
+  /** Call after every on* subscription is in place, or the initial state is missed. */
+  ready: () => void;
   adjustOffset: (deltaMs: number) => void;
   setConfig: (patch: Partial<AppConfig>) => void;
   /** Opens a native file picker. Resolves true when an image was chosen and applied. */

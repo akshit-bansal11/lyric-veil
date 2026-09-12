@@ -21,6 +21,14 @@ export function useConfig(): AppConfig {
   return config;
 }
 
+/**
+ * Ask main to replay config, image and status. Must be the last hook in a root:
+ * effects run in declaration order, so every subscription above it exists first.
+ */
+export function useReady(): void {
+  useEffect(() => window.lyricVeil.ready(), []);
+}
+
 export function useInteractiveMode(): boolean {
   const [interactive, setInteractive] = useState(false);
   useEffect(() => window.lyricVeil.onInteractiveMode(setInteractive), []);
