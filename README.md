@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="site/favicon.svg" alt="" width="72" height="72">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/logo-light.svg">
+  <img src="site/logo-dark.svg" alt="" width="72" height="72">
+</picture>
 
 # Lyric Veil
 
