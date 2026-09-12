@@ -1,8 +1,10 @@
 <div align="center">
 
-![Lyric Veil](site/og.png)
+<img src="site/favicon.svg" alt="" width="72" height="72">
 
 # Lyric Veil
+
+![Lyric Veil](site/og.png)
 
 **Word-synced Spotify lyrics, painted on your Windows desktop.**
 
